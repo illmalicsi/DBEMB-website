@@ -593,6 +593,15 @@
   CALL add_index_if_missing('rent_requests','idx_rent_requests_status','ALTER TABLE rent_requests ADD INDEX idx_rent_requests_status (status)');
   -- reserved_location index removed (reserved columns removed)
 
+  -- ============================================================================
+  -- Migration: Ensure 'cancelled' status exists on rent_requests.status ENUM
+  -- This ALTER is safe to run repeatedly: if the enum already contains
+  -- 'cancelled' the MODIFY will effectively be a no-op.
+  -- Added 2025-11-18
+  ALTER TABLE rent_requests
+    MODIFY COLUMN status ENUM('pending','approved','rejected','paid','returned','cancelled') DEFAULT 'pending';
+
+
 
   -- Condition assessment foreign keys/indexes removed with table.
 

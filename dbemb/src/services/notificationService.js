@@ -50,7 +50,8 @@ class NotificationService {
       type: notification.type || 'info',
       title: notification.title,
       message: notification.message,
-      data: notification.data || {},
+      // Ensure an `icon` hint is present in data so remote/store consumers can render it
+      data: Object.assign({}, notification.data || {}, { icon: notification.icon || notification.type || null }),
       read: false,
       createdAt: new Date().toISOString()
     };

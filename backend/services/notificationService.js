@@ -71,12 +71,39 @@ function formatAdminNotification(type, title, message, data) {
     }
 
     if (type === 'booking_request' || type === 'rental_request') {
-      // Expect data: { requestId, service, date, userName }
-      const service = data && data.service ? data.service : '';
-      const date = data && data.date ? data.date : null;
+      // Expect data: booking_request -> { requestId, service, date, userName }
+      //           rental_request  -> { requestIds, items: [{ instrumentName, quantity, ... }], startDate, endDate, userName }
+      const date = data && (data.date || data.startDate || data.requestedDate) ? (data.date || data.startDate || data.requestedDate) : null;
       const when = date ? ` on ${new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}` : '';
+
+      // If rental_request and items array present, build a clearer title/message including instrument names
+      if (type === 'rental_request' && data && Array.isArray(data.items) && data.items.length > 0) {
+        const itemNames = data.items.map(i => (i && (i.instrumentName || i.name || i.instrument_name)) || '').filter(Boolean);
+        const itemsLabel = itemNames.length === 0 ? '' : (itemNames.length === 1 ? itemNames[0] : itemNames.join(', '));
+
+        out.title = title || (itemNames.length > 1 ? 'New Rental Request (Multiple Items)' : `New Rental Request - ${itemsLabel}`);
+        const userName = data && (data.userName || data.name) ? (data.userName || data.name) : '';
+        out.message = userName ? `${userName} requested ${itemsLabel}${when}` : message || out.message;
+        out.data = Object.assign({}, out.data, { items: data.items, itemsLabel });
+        return out;
+      }
+
+      // Support legacy/singular payloads where instrumentName/quantity were passed directly
+      if (type === 'rental_request' && data && (data.instrumentName || data.instrument_name)) {
+        const instrumentName = data.instrumentName || data.instrument_name || data.name || '';
+        const qty = (typeof data.quantity !== 'undefined' && data.quantity !== null) ? Number(data.quantity) : (data.qty || data.quantity || 1);
+        const itemsLabel = qty && qty > 1 ? `${qty}x ${instrumentName}` : instrumentName;
+        out.title = title || (qty > 1 ? 'New Rental Request (Multiple Items)' : `New Rental Request - ${instrumentName}`);
+        const userName = data && (data.userName || data.name) ? (data.userName || data.name) : '';
+        out.message = userName ? `${userName} requested ${itemsLabel}${when}` : message || out.message;
+        out.data = Object.assign({}, out.data, { instrumentName, quantity: qty, itemsLabel });
+        return out;
+      }
+
+      // Fallback for booking_request or rental_request without items
+      const service = data && data.service ? data.service : '';
       out.title = title || 'New Booking Request';
-      out.message = data && data.userName ? `${data.userName} requested ${service}${when}` : message || out.message;
+      out.message = data && (data.userName || data.name) ? `${(data.userName || data.name)} requested ${service}${when}` : message || out.message;
       return out;
     }
 
@@ -84,6 +111,8 @@ function formatAdminNotification(type, title, message, data) {
       const name = data && (data.name || data.userName) ? (data.name || data.userName) : '';
       out.title = title || 'New Customer Registered';
       out.message = name ? `${name} has registered as a new customer` : out.message;
+      // attach a suggested icon for admin UIs
+      out.data = Object.assign({}, out.data, { icon: 'person-plus' });
       return out;
     }
 
@@ -91,8 +120,23 @@ function formatAdminNotification(type, title, message, data) {
       const inv = data && (data.invoiceNumber || data.invoiceId) ? (data.invoiceNumber || `#${data.invoiceId}`) : '';
       out.title = title || 'Receipt Ready';
       out.message = inv ? `Receipt for ${inv} is now available` : out.message;
+      out.data = Object.assign({}, out.data, { icon: 'receipt' });
       return out;
     }
+
+    // Default icons for known types
+    const defaultIconMap = {
+      payment_received: 'check-circle',
+      success: 'check-circle',
+      warning: 'exclamation-triangle',
+      booking_request: 'exclamation-triangle',
+      rental_request: 'exclamation-triangle',
+      new_customer: 'person-plus',
+      receipt_ready: 'receipt'
+    };
+
+    const chosen = defaultIconMap[type] || null;
+    if (chosen) out.data = Object.assign({}, out.data, { icon: chosen });
 
     return out;
   } catch (e) {

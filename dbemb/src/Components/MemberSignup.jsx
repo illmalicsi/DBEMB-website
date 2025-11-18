@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import authService from '../services/authService';
 import {
   FaUpload,
@@ -14,7 +14,8 @@ import {
   FaTimes,
   FaEye,
   FaEyeSlash,
-} from "../icons/fa";
+} from "react-icons/fa";
+import StyledSelect from './StyledSelect';
 
 const Signup = ({ onSignup, onClose, onSwitchToLogin }) => {
   const [form, setForm] = useState({
@@ -60,41 +61,67 @@ const Signup = ({ onSignup, onClose, onSwitchToLogin }) => {
   }, []);
 
   const styles = {
-    // global font baseline (consistent across component)
-    fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
-    baseFontSize: 15,
-
-    page: {
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%)",
-      padding: 24,
-      fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
-      fontSize: "15px",
-      lineHeight: 1.45,
-      zIndex: 1000,
-      overflow: "auto"
+    // Use same container / wrapper / formContainer structure as Booking
+    fontFamily: "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
+    baseFontSize: 16,
+    container: {
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      minHeight: '100vh'
     },
-    card: {
+    tableCard: {
+      backgroundColor: '#fff',
+      borderRadius: '12px',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+      border: '1px solid #e2e8f0',
+      overflow: 'hidden',
+      width: '100%',
+      maxWidth: '100vw',
+      margin: '0',
+      padding: '0'
+    },
+    wrapper: {
+      maxWidth: 920,
+      margin: '0 auto',
+      width: '100%',
+      boxSizing: 'border-box'
+    },
+    formContainer: {
+      background: '#ffffff',
+      borderRadius: 16,
+      padding: '1.75rem',
+      border: '1px solid rgba(3, 105, 161, 0.06)',
+      boxShadow: '0 8px 24px rgba(2, 6, 23, 0.06)',
+      position: 'relative',
+      overflow: 'visible',
+      fontFamily: 'inherit'
+    },
+
+  page: {
+    position: "fixed",
+    position: "relative",
+    display: "block",
+    alignItems: "stretch",
+    justifyContent: "flex-start",
+    background: "linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%)",
+    padding: "2rem 1rem",
+    fontSize: "15px",
+    lineHeight: 1.45,
+    zIndex: "auto",
+    overflow: "auto"
+  },
+  card: {
       width: "100%",
       maxWidth: 920,
-      maxHeight: "90vh",
       background: "#ffffff",
       borderRadius: 16,
-      padding: "36px 40px 40px 40px",
+      padding: "1.75rem", /* match Booking's formContainer padding */
       boxShadow: "0 10px 40px rgba(11, 59, 120, 0.12)",
       color: "#1e293b",
       position: "relative",
-      overflow: "auto",
-      margin: "auto",
+      overflow: "visible",
+      margin: "40px auto",
       fontFamily: "inherit",
-      fontSize: "15px"
+      fontSize: "16px" // match Booking font size
     },
     closeButton: {
       position: "absolute",
@@ -134,12 +161,12 @@ const Signup = ({ onSignup, onClose, onSwitchToLogin }) => {
 
     // title / subtitle (consistent sizes)
     title: {
-      fontSize: "30px",
+      fontSize: "40px", // match Booking title size
       fontWeight: 700,
       color: "#0f172a",
-      marginBottom: 0,               // reduce gap under title
+      marginBottom: 0,
       letterSpacing: "-0.02em",
-      paddingBottom: 8,              // slightly smaller padding so underline sits closer
+      paddingBottom: 8,
       borderBottom: "3px solid #bae6fd",
       display: "block",
       width: "100%",
@@ -207,7 +234,7 @@ const Signup = ({ onSignup, onClose, onSwitchToLogin }) => {
       color: "#1e293b",
       padding: "11px 14px 11px 44px",
       borderRadius: 10,
-      fontSize: "15px",
+      fontSize: "16px", // match Booking input baseline
       outline: "none",
       transition: "all 0.2s",
       fontFamily: "inherit"
@@ -219,7 +246,7 @@ const Signup = ({ onSignup, onClose, onSwitchToLogin }) => {
       color: "#1e293b",
       padding: "11px 14px 11px 44px",
       borderRadius: 10,
-      fontSize: "15px",
+      fontSize: "16px", // match Booking textarea baseline
       outline: "none",
       transition: "all 0.2s",
       fontFamily: "inherit",
@@ -262,7 +289,7 @@ const Signup = ({ onSignup, onClose, onSwitchToLogin }) => {
     // buttons / notices
     btnPrimary: {
       width: "100%",
-      background: 'linear-gradient(135deg, #0369a1 0%, #0284c7 100%)',
+      background: 'linear-gradient(135deg, #1e40af 0%, #06b6d4 100%)',
       color: '#ffffff',
       border: "none",
       padding: "12px 20px",
@@ -308,7 +335,7 @@ const Signup = ({ onSignup, onClose, onSwitchToLogin }) => {
       display: "flex",
       alignItems: "center",
       gap: 10,
-      fontSize: "14px",
+      fontSize: "15px", // slightly bumped to align with Booking sizing
       fontFamily: "inherit"
     },
 
@@ -330,6 +357,8 @@ const Signup = ({ onSignup, onClose, onSwitchToLogin }) => {
       border: "none"
     },
   };
+
+  
 
   const validate = (values) => {
     const e = {};
@@ -454,380 +483,377 @@ const Signup = ({ onSignup, onClose, onSwitchToLogin }) => {
   };
 
   return (
-    <div style={styles.page}>
-      <form style={styles.card} onSubmit={handleSubmit} noValidate>
-        <button 
-          type="button" 
-          aria-label="Close" 
-          onClick={onClose} 
-          style={styles.closeButton}
-          onMouseEnter={(e) => e.currentTarget.style.color = '#0b4f8a'}
-          onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
-        >
-          <FaTimes size={18} />
-        </button>
-        
-        <div style={styles.header}>
-          {/* Logo */}
-          <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
-            <img 
-              src="/logo.png" 
-              alt="Davao Blue Eagles" 
-              style={{ 
-                height: '80px', 
-                width: 'auto',
-                objectFit: 'contain'
-              }} 
-            />
-          </div>
-          
-          <div style={styles.title}>Membership Application</div>
-          <div style={styles.subtitle}>Apply to join the Davao Blue Eagles Marching Band</div>
-        </div>
+    <div style={styles.container}>
+      <div style={styles.wrapper}>
+        <div className="form-container" style={styles.formContainer}>
+          <form onSubmit={handleSubmit} noValidate style={{ width: '100%' }}>
+             <button 
+               type="button" 
+               aria-label="Close" 
+               onClick={onClose} 
+               style={styles.closeButton}
+               onMouseEnter={(e) => e.currentTarget.style.color = '#0b4f8a'}
+               onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+             >
+               <FaTimes size={18} />
+             </button>
 
-        {/* Personal Information */}
-        <div style={styles.sectionTitle}>
-          <FaUser />
-          Personal Information
-        </div>
-
-        <div style={styles.grid2}>
-          <div style={styles.field}>
-            <label style={styles.label}>First name</label>
-            <div style={styles.inputWrapper}>
-              <FaUser style={styles.icon} />
-              <input
-                style={styles.input}
-                value={form.firstName}
-                onChange={(e) => handleChange("firstName", e.target.value)}
-                placeholder="First name"
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#0b4f8a';
-                  e.target.style.background = '#ffffff';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e2e8f0';
-                  e.target.style.background = '#f8fafc';
-                }}
-              />
+            
+            <div style={styles.header}>
+              {/* Logo */}
+              <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
+                <img 
+                  src="/logo.png" 
+                  alt="Davao Blue Eagles" 
+                  style={{ 
+                    height: '80px', 
+                    width: 'auto',
+                    objectFit: 'contain'
+                  }} 
+                />
+              </div>
+              
+              <div style={styles.title}>Membership Application</div>
+              <div style={styles.subtitle}>Apply to join the Davao Blue Eagles Marching Band</div>
             </div>
-            {errors.firstName && <div style={styles.err}>{errors.firstName}</div>}
-          </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>Last name</label>
-            <div style={styles.inputWrapper}>
-              <FaUser style={styles.icon} />
-              <input
-                style={styles.input}
-                value={form.lastName}
-                onChange={(e) => handleChange("lastName", e.target.value)}
-                placeholder="Last name"
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#0b4f8a';
-                  e.target.style.background = '#ffffff';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e2e8f0';
-                  e.target.style.background = '#f8fafc';
-                }}
-              />
+            {/* Personal Information */}
+            <div style={styles.sectionTitle}>
+              Personal Information
             </div>
-            {errors.lastName && <div style={styles.err}>{errors.lastName}</div>}
-          </div>
-        </div>
 
-        <div style={styles.field}>
-          <label style={styles.label}>Email address</label>
-          <div style={styles.inputWrapper}>
-            <FaEnvelope style={styles.icon} />
-            <input
-              type="email"
-              style={styles.input}
-              value={form.email}
-              onChange={(e) => handleChange("email", e.target.value)}
-              placeholder="Enter your email address"
-              onFocus={(e) => {
-                e.target.style.borderColor = '#0b4f8a';
-                e.target.style.background = '#ffffff';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#e2e8f0';
-                e.target.style.background = '#f8fafc';
-              }}
-            />
-          </div>
-          {errors.email && <div style={styles.err}>{errors.email}</div>}
-        </div>
+            <div style={styles.grid2}>
+              <div style={styles.field}>
+                <label style={styles.label}>First name</label>
+                <div style={styles.inputWrapper}>
+                  <FaUser style={styles.icon} />
+                  <input
+                    style={styles.input}
+                    value={form.firstName}
+                    onChange={(e) => handleChange("firstName", e.target.value)}
+                    placeholder="First name"
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#0b4f8a';
+                      e.target.style.background = '#ffffff';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e2e8f0';
+                      e.target.style.background = '#f8fafc';
+                    }}
+                  />
+                </div>
+                {errors.firstName && <div style={styles.err}>{errors.firstName}</div>}
+              </div>
 
-        <div style={styles.grid2}>
-          <div style={styles.field}>
-            <label style={styles.label}>Password</label>
-            <div style={styles.inputWrapper}>
-              <FaLock style={styles.icon} />
-              <input
-                type={showPassword ? "text" : "password"}
-                style={styles.input}
-                value={form.password}
-                onChange={(e) => handleChange("password", e.target.value)}
-                placeholder="Create a password"
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#0b4f8a';
-                  e.target.style.background = '#ffffff';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e2e8f0';
-                  e.target.style.background = '#f8fafc';
-                }}
-              />
-              <div
-                style={styles.eyeIcon}
-                onClick={() => setShowPassword(!showPassword)}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#0b4f8a'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
-              >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              <div style={styles.field}>
+                <label style={styles.label}>Last name</label>
+                <div style={styles.inputWrapper}>
+                  <FaUser style={styles.icon} />
+                  <input
+                    style={styles.input}
+                    value={form.lastName}
+                    onChange={(e) => handleChange("lastName", e.target.value)}
+                    placeholder="Last name"
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#0b4f8a';
+                      e.target.style.background = '#ffffff';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e2e8f0';
+                      e.target.style.background = '#f8fafc';
+                    }}
+                  />
+                </div>
+                {errors.lastName && <div style={styles.err}>{errors.lastName}</div>}
               </div>
             </div>
-            {errors.password && <div style={styles.err}>{errors.password}</div>}
-          </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>Confirm password</label>
-            <div style={styles.inputWrapper}>
-              <FaLock style={styles.icon} />
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                style={styles.input}
-                value={form.confirmPassword}
-                onChange={(e) => handleChange("confirmPassword", e.target.value)}
-                placeholder="Confirm your password"
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#0b4f8a';
-                  e.target.style.background = '#ffffff';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e2e8f0';
-                  e.target.style.background = '#f8fafc';
-                }}
-              />
-              <div
-                style={styles.eyeIcon}
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#0b4f8a'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
-              >
-                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+            <div style={styles.field}>
+              <label style={styles.label}>Email address</label>
+              <div style={styles.inputWrapper}>
+                <FaEnvelope style={styles.icon} />
+                <input
+                  type="email"
+                  style={styles.input}
+                  value={form.email}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  placeholder="Enter your email address"
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#0b4f8a';
+                    e.target.style.background = '#ffffff';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e2e8f0';
+                    e.target.style.background = '#f8fafc';
+                  }}
+                />
+              </div>
+              {errors.email && <div style={styles.err}>{errors.email}</div>}
+            </div>
+
+            <div style={styles.grid2}>
+              <div style={styles.field}>
+                <label style={styles.label}>Password</label>
+                <div style={styles.inputWrapper}>
+                  <FaLock style={styles.icon} />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    style={styles.input}
+                    value={form.password}
+                    onChange={(e) => handleChange("password", e.target.value)}
+                    placeholder="Create a password"
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#0b4f8a';
+                      e.target.style.background = '#ffffff';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e2e8f0';
+                      e.target.style.background = '#f8fafc';
+                    }}
+                  />
+                  <div
+                    style={styles.eyeIcon}
+                    onClick={() => setShowPassword(!showPassword)}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#0b4f8a'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </div>
+                </div>
+                {errors.password && <div style={styles.err}>{errors.password}</div>}
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Confirm password</label>
+                <div style={styles.inputWrapper}>
+                  <FaLock style={styles.icon} />
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    style={styles.input}
+                    value={form.confirmPassword}
+                    onChange={(e) => handleChange("confirmPassword", e.target.value)}
+                    placeholder="Confirm your password"
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#0b4f8a';
+                      e.target.style.background = '#ffffff';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e2e8f0';
+                      e.target.style.background = '#f8fafc';
+                    }}
+                  />
+                  <div
+                    style={styles.eyeIcon}
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#0b4f8a'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                  >
+                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                  </div>
+                </div>
+                {errors.confirmPassword && <div style={styles.err}>{errors.confirmPassword}</div>}
               </div>
             </div>
-            {errors.confirmPassword && <div style={styles.err}>{errors.confirmPassword}</div>}
-          </div>
-        </div>
 
-        <div style={styles.grid3}>
-          <div style={styles.field}>
-            <label style={styles.label}>Date of Birth</label>
-            <div style={styles.inputWrapper}>
-              <FaCalendar style={styles.icon} />
-              <input
-                type="date"
-                style={styles.input}
-                value={form.birthday}
-                onChange={(e) => handleChange("birthday", e.target.value)}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#0b4f8a';
-                  e.target.style.background = '#ffffff';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e2e8f0';
-                  e.target.style.background = '#f8fafc';
-                }}
-              />
+            <div style={styles.grid3}>
+              <div style={styles.field}>
+                <label style={styles.label}>Date of Birth</label>
+                <div style={styles.inputWrapper}>
+                  <FaCalendar style={styles.icon} />
+                  <input
+                    type="date"
+                    style={styles.input}
+                    value={form.birthday}
+                    onChange={(e) => handleChange("birthday", e.target.value)}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#0b4f8a';
+                      e.target.style.background = '#ffffff';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e2e8f0';
+                      e.target.style.background = '#f8fafc';
+                    }}
+                  />
+                </div>
+                {errors.birthday && <div style={styles.err}>{errors.birthday}</div>}
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Contact Number</label>
+                <div style={styles.inputWrapper}>
+                  <FaPhone style={styles.icon} />
+                  <input
+                    type="tel"
+                    style={styles.input}
+                    value={form.phone}
+                    onChange={(e) => handleChange("phone", e.target.value)}
+                    placeholder="e.g., 09123456789"
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#0b4f8a';
+                      e.target.style.background = '#ffffff';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e2e8f0';
+                      e.target.style.background = '#f8fafc';
+                    }}
+                  />
+                </div>
+                {errors.phone && <div style={styles.err}>{errors.phone}</div>}
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Primary Instrument/Section</label>
+                <div style={styles.inputWrapper}>
+                  <FaMusic style={styles.icon} />
+                  <StyledSelect
+                    value={showCustomInstrument ? 'Others' : form.instrument}
+                    onChange={(e) => handleChange('instrument', e.target.value)}
+                    style={{ width: '100%' }}
+                    containerStyle={{ width: '100%' }}
+                  >
+                    <option value="">Select instrument type</option>
+                    {instrumentTypes.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                    <option value="Others">Others</option>
+                  </StyledSelect>
+                </div>
+                {errors.instrument && <div style={styles.err}>{errors.instrument}</div>}
+              </div>
             </div>
-            {errors.birthday && <div style={styles.err}>{errors.birthday}</div>}
-          </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>Contact Number</label>
-            <div style={styles.inputWrapper}>
-              <FaPhone style={styles.icon} />
-              <input
-                type="tel"
-                style={styles.input}
-                value={form.phone}
-                onChange={(e) => handleChange("phone", e.target.value)}
-                placeholder="e.g., 09123456789"
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#0b4f8a';
-                  e.target.style.background = '#ffffff';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e2e8f0';
-                  e.target.style.background = '#f8fafc';
-                }}
-              />
+            {showCustomInstrument && (
+              <div style={styles.field}>
+                <label style={styles.label}>Specify Instrument Type</label>
+                <div style={styles.inputWrapper}>
+                  <FaMusic style={styles.icon} />
+                  <input
+                    style={styles.input}
+                    value={customInstrument}
+                    onChange={(e) => handleCustomInstrumentChange(e.target.value)}
+                    placeholder="e.g., Trumpet, Flute, Drums, Color Guard"
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#0b4f8a';
+                      e.target.style.background = '#ffffff';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e2e8f0';
+                      e.target.style.background = '#f8fafc';
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div style={styles.field}>
+              <label style={styles.label}>Complete Address</label>
+              <div style={{ ...styles.inputWrapper, alignItems: "flex-start" }}>
+                <FaMapMarkerAlt style={styles.iconTop} />
+                <textarea
+                  style={styles.textarea}
+                  value={form.address}
+                  onChange={(e) => handleChange("address", e.target.value)}
+                  placeholder="Street, Barangay, City, Province"
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#0b4f8a';
+                    e.target.style.background = '#ffffff';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e2e8f0';
+                    e.target.style.background = '#f8fafc';
+                  }}
+                />
+              </div>
+              {errors.address && <div style={styles.err}>{errors.address}</div>}
             </div>
-            {errors.phone && <div style={styles.err}>{errors.phone}</div>}
-          </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>Primary Instrument/Section</label>
-            <div style={styles.inputWrapper}>
-              <FaMusic style={styles.icon} />
-              <select
-                style={styles.input}
-                value={showCustomInstrument ? 'Others' : form.instrument}
-                onChange={(e) => handleChange("instrument", e.target.value)}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#0b4f8a';
-                  e.target.style.background = '#ffffff';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e2e8f0';
-                  e.target.style.background = '#f8fafc';
-                }}
+            <div style={styles.field}>
+              <label style={styles.label}>Valid Government ID (Required for Membership)</label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={handleFileChange}
+                style={styles.fileInput}
+              />
+              <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                Upload a clear photo or scan of your government-issued ID (Driver's License, SSS ID, Passport, etc.)
+              </div>
+              {fileName && (
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  Selected: {fileName}
+                </div>
+              )}
+              {errors.identityProof && <div style={styles.err}>{errors.identityProof}</div>}
+            </div>
+
+            <div style={{
+              background: "#f0f9ff",
+              border: "1px solid #bae6fd",
+              borderRadius: 10,
+              padding: 16,
+              marginTop: 20,
+              fontSize: 12,
+              color: "#0c4a6e",
+              lineHeight: 1.5
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                <FaIdCard />
+                Membership Application Notice
+              </div>
+              <div>
+                By submitting this application, you agree to provide accurate information and understand that:
+                <ul style={{ margin: "8px 0", paddingLeft: 20 }}>
+                  <li>All information will be verified during the review process</li>
+                  <li>Your application will be reviewed by the band management</li>
+                  <li>You may be contacted for an audition or interview</li>
+                  <li>Membership is subject to availability and band requirements</li>
+                </ul>
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              style={styles.btnPrimary} 
+              disabled={submitting}
+              onMouseEnter={(e) => {
+                if (!submitting) {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(11, 59, 120, 0.3)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!submitting) {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(11, 59, 120, 0.2)';
+                }
+              }}
+            >
+              {submitting ? "Submitting Application..." : "Submit Membership Application"}
+            </button>
+
+            <div style={styles.linkText}>
+              Already a member?{' '}
+              <button
+                type="button"
+                onClick={onSwitchToLogin}
+                style={styles.linkButton}
+                onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
               >
-                <option value="">Select instrument type</option>
-                {instrumentTypes.map((type) => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-                <option value="Others">Others</option>
-              </select>
+                Sign in to your account
+              </button>
             </div>
-            {errors.instrument && <div style={styles.err}>{errors.instrument}</div>}
-          </div>
+
+            {success && (
+              <div style={styles.successBox}>
+                <FaCheck color="#16a34a" />
+                <div>{success}</div>
+              </div>
+            )}
+            {errors.submit && <div style={{ ...styles.err, marginTop: 12, textAlign: 'center' }}>{errors.submit}</div>}
+          </form>
         </div>
-
-        {showCustomInstrument && (
-          <div style={styles.field}>
-            <label style={styles.label}>Specify Instrument Type</label>
-            <div style={styles.inputWrapper}>
-              <FaMusic style={styles.icon} />
-              <input
-                style={styles.input}
-                value={customInstrument}
-                onChange={(e) => handleCustomInstrumentChange(e.target.value)}
-                placeholder="e.g., Trumpet, Flute, Drums, Color Guard"
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#0b4f8a';
-                  e.target.style.background = '#ffffff';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e2e8f0';
-                  e.target.style.background = '#f8fafc';
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        <div style={styles.field}>
-          <label style={styles.label}>Complete Address</label>
-          <div style={{ ...styles.inputWrapper, alignItems: "flex-start" }}>
-            <FaMapMarkerAlt style={styles.iconTop} />
-            <textarea
-              style={styles.textarea}
-              value={form.address}
-              onChange={(e) => handleChange("address", e.target.value)}
-              placeholder="Street, Barangay, City, Province"
-              onFocus={(e) => {
-                e.target.style.borderColor = '#0b4f8a';
-                e.target.style.background = '#ffffff';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#e2e8f0';
-                e.target.style.background = '#f8fafc';
-              }}
-            />
-          </div>
-          {errors.address && <div style={styles.err}>{errors.address}</div>}
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>Valid Government ID (Required for Membership)</label>
-          <input
-            type="file"
-            accept="image/*,.pdf"
-            onChange={handleFileChange}
-            style={styles.fileInput}
-          />
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
-            Upload a clear photo or scan of your government-issued ID (Driver's License, SSS ID, Passport, etc.)
-          </div>
-          {fileName && (
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-              Selected: {fileName}
-            </div>
-          )}
-          {errors.identityProof && <div style={styles.err}>{errors.identityProof}</div>}
-        </div>
-
-        <div style={{
-          background: "#f0f9ff",
-          border: "1px solid #bae6fd",
-          borderRadius: 10,
-          padding: 16,
-          marginTop: 20,
-          fontSize: 12,
-          color: "#0c4a6e",
-          lineHeight: 1.5
-        }}>
-          <div style={{ fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-            <FaIdCard />
-            Membership Application Notice
-          </div>
-          <div>
-            By submitting this application, you agree to provide accurate information and understand that:
-            <ul style={{ margin: "8px 0", paddingLeft: 20 }}>
-              <li>All information will be verified during the review process</li>
-              <li>Your application will be reviewed by the band management</li>
-              <li>You may be contacted for an audition or interview</li>
-              <li>Membership is subject to availability and band requirements</li>
-            </ul>
-          </div>
-        </div>
-
-        <button 
-          type="submit" 
-          style={styles.btnPrimary} 
-          disabled={submitting}
-          onMouseEnter={(e) => {
-            if (!submitting) {
-              e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 6px 16px rgba(11, 59, 120, 0.3)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!submitting) {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(11, 59, 120, 0.2)';
-            }
-          }}
-        >
-          {submitting ? "Submitting Application..." : "Submit Membership Application"}
-        </button>
-
-        <div style={styles.linkText}>
-          Already a member?{' '}
-          <button
-            type="button"
-            onClick={onSwitchToLogin}
-            style={styles.linkButton}
-            onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-            onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-          >
-            Sign in to your account
-          </button>
-        </div>
-
-        {success && (
-          <div style={styles.successBox}>
-            <FaCheck color="#16a34a" />
-            <div>{success}</div>
-          </div>
-        )}
-        {errors.submit && <div style={{ ...styles.err, marginTop: 12, textAlign: 'center' }}>{errors.submit}</div>}
-      </form>
+      </div>
     </div>
   );
 };

@@ -52,14 +52,11 @@ const InstrumentBorrowing = () => {
   // Load user data
   useEffect(() => {
     try {
-      const stored = AuthService.getUser();
+      const stored = JSON.parse(localStorage.getItem('davaoBlueEaglesUser') || 'null');
       if (stored) {
         setUser(stored);
-        const first = stored.firstName || stored.first_name || stored.name || stored.customerName || '';
-        const last = stored.lastName || stored.last_name || '';
-        const computedName = first ? `${first} ${last}`.trim() : (stored.name || stored.customerName || '');
-        if (computedName || stored.email) {
-          setName(computedName || (stored.email || ''));
+        if (stored.firstName || stored.email) {
+          setName(stored.firstName ? `${stored.firstName} ${stored.lastName || ''}`.trim() : (stored.email || ''));
           setEmail(stored.email || '');
         }
       }
@@ -203,7 +200,9 @@ const InstrumentBorrowing = () => {
 
         const endpoint = '/instruments/borrow-request';
         try {
+          console.log('InstrumentBorrowing: submitting borrow payload to', endpoint, payload);
           const resp = await AuthService.post(endpoint, payload);
+          console.log('InstrumentBorrowing: server response for borrow-request:', resp);
           if (!resp || resp.success !== true) throw new Error(resp && resp.message ? resp.message : 'Failed to submit request');
 
           const request = {
@@ -252,7 +251,9 @@ const InstrumentBorrowing = () => {
             payload,
             meta: queuedRequest,
             onSuccess: (resp) => {
+              console.log('InstrumentBorrowing: queued borrow request synced response:', resp);
               const updated = { ...queuedRequest, id: resp.requestId || resp.request_id || Date.now(), request_id: resp.requestId || resp.request_id || null };
+              console.log('InstrumentBorrowing: queued borrow updated meta:', updated);
               window.dispatchEvent(new CustomEvent('borrowRequestSynced', { detail: updated }));
               window.dispatchEvent(new Event('borrowRequestsUpdated'));
             },
@@ -623,6 +624,9 @@ const InstrumentBorrowing = () => {
 
       <div style={styles.wrapper}>
         <div style={styles.header}>
+          <h1 style={styles.title}>
+            Instrument Borrowing
+          </h1>
           <p style={styles.subtitle}>
             Borrow instruments as a member perk. Fill out the form below and we'll get back to you within 24 hours.
           </p>

@@ -191,22 +191,37 @@ const Notifications = ({ user }) => {
   };
 
   const getNotificationIcon = (type) => {
-    // Map known notification types to clearer icons for admin affordance
-    switch ((type || '').toString().toLowerCase()) {
-      case 'success':
+    // Prefer an explicit icon specified in the notification (n.data.icon or n.icon)
+    // Accept icon hints like: 'check-circle', 'exclamation-triangle', 'receipt', 'person-plus', 'info-circle'
+    const iconHint = (type || '').toString().toLowerCase();
+    switch (iconHint) {
+      case 'check-circle':
       case 'payment_received':
+      case 'success':
         return <BsCheckCircle style={{ color: '#10b981' }} />;
+      case 'exclamation-triangle':
       case 'warning':
       case 'booking_request':
       case 'rental_request':
         return <BsExclamationTriangle style={{ color: '#f59e0b' }} />;
+      case 'receipt':
       case 'receipt_ready':
         return <BsReceipt style={{ color: '#2563eb' }} />;
+      case 'person-plus':
       case 'new_customer':
         return <BsPersonPlus style={{ color: '#7c3aed' }} />;
       default:
         return <BsInfoCircle style={{ color: '#3b82f6' }} />;
     }
+  };
+
+  // Helper: get the best icon for a notification object (prefers data.icon or top-level icon)
+  const resolveIconForNotification = (n) => {
+    if (!n) return getNotificationIcon('info');
+    const dataIcon = n.data && (n.data.icon || n.data.iconName || n.data.icon_name);
+    if (dataIcon) return getNotificationIcon(String(dataIcon).toLowerCase());
+    if (n.icon) return getNotificationIcon(String(n.icon).toLowerCase());
+    return getNotificationIcon(n.type || 'info');
   };
 
   return (
@@ -318,20 +333,12 @@ const Notifications = ({ user }) => {
                     cursor: 'default'
                   }}
                 >
-                  <div style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: n.read ? '#f8fafc' : '#e6f5ff'
-                  }}>
-                    {getNotificationIcon(n.type)}
-                  </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{resolveIconForNotification(n)}</div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</div>
+                      </div>
                       <div style={{ fontSize: 12, color: '#9ca3af', flexShrink: 0 }}>{timeAgo(n.createdAt)}</div>
                     </div>
                     <div style={{ marginTop: 6, fontSize: 13, color: '#374151', lineHeight: 1.4, overflow: 'hidden' }}>

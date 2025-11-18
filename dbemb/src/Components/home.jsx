@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FaFacebookF, FaInstagram, FaYoutube, FaEnvelope, FaMapMarkerAlt, FaPhoneAlt, FaClock, FaUser, FaMusic, FaCreditCard, FaMobileAlt, FaUniversity, FaCheckCircle, FaSpinner, FaCalendarAlt, FaFileAlt, FaFlag, FaChalkboardTeacher, FaGuitar, FaArrowUp, FaChevronDown, FaBars, FaTimes, FaChevronLeft, FaChevronRight, FaCog, FaSignOutAlt } from '../icons/fa';
+import { FaFacebookF, FaInstagram, FaYoutube, FaEnvelope, FaMapMarkerAlt, FaPhoneAlt, FaClock, FaUser, FaMusic, FaCreditCard, FaMobileAlt, FaUniversity, FaStore, FaWallet, FaFileInvoiceDollar, FaCheckCircle, FaSpinner, FaCalendarAlt, FaFileAlt, FaFlag, FaChalkboardTeacher, FaGuitar, FaArrowUp, FaChevronDown, FaBars, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import { useNavigate } from 'react-router-dom';
 import bg2 from "./Assets/bg2.jpg";
@@ -23,8 +23,6 @@ import NotificationService from '../services/notificationService'
 import Notifications from './Notifications'
 import AuthService from '../services/authService'
 import TestPaymentGateway from './TestPaymentGateway'
-import ErrorBoundary from './ErrorBoundary'
-import { formatCurrency } from '../utils/formatters';
 import CustomerService from './CustomerService'
 
 const containerStyle = {
@@ -37,8 +35,6 @@ const containerStyle = {
 };
 
 const Home = () => {
-  // Test Payment Modal state (must be defined before use)
-  const [showTestPaymentModal, setShowTestPaymentModal] = useState(false);
   const navigate = useNavigate();
 
   // Mobile responsiveness - track window width
@@ -70,7 +66,7 @@ const Home = () => {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
-    marginLeft: windowWidth <= 768 ? '0' : '50px'
+    marginLeft: windowWidth <= 768 ? '0' : '8px'
   };
 
   const logoMainStyle = {
@@ -116,18 +112,6 @@ const Home = () => {
   const buttonContainerStyle = {
     display: windowWidth <= 768 ? 'none' : 'flex',
     gap: '12px'
-  };
-
-  const menuItemStyle = {
-    display: 'flex',
-    gap: '10px',
-    alignItems: 'center',
-    padding: '10px',
-    borderRadius: '8px',
-    textDecoration: 'none',
-    color: '#0b3b78',
-    fontWeight: 600,
-    cursor: 'pointer'
   };
 
   const loginButtonStyle = {
@@ -329,7 +313,7 @@ const aboutHeaderStyle = {
   // About side-by-side layout
 const aboutWrapStyle = {
   display: 'grid',
-  gridTemplateColumns: windowWidth <= 768 ? '1fr' : 'minmax(0, 1.2fr) minmax(0, 1fr)',
+  gridTemplateColumns: windowWidth <= 768 ? '1fr' : 'minmax(0, 3fr) minmax(0, 2fr)',
   gap: windowWidth <= 768 ? '20px' : '24px',
   alignItems: 'stretch',
   marginBottom: windowWidth <= 768 ? '20px' : '28px'
@@ -457,7 +441,7 @@ const carouselImageStyle = {
 
   const contactGridStyle = {
     display: 'grid',
-    gridTemplateColumns: windowWidth <= 768 ? '1fr' : 'minmax(0, 1fr) minmax(0, 1.2fr)',
+    gridTemplateColumns: windowWidth <= 768 ? '1fr' : 'minmax(0, 2fr) minmax(0, 3fr)',
     gap: windowWidth <= 768 ? '20px' : '32px',
     marginBottom: windowWidth <= 768 ? '32px' : '48px'
   };
@@ -682,13 +666,20 @@ const carouselImageStyle = {
     padding: windowWidth <= 768 ? '0 16px' : '0 24px'
   };
 
-  const footerMainStyle = {
-    display: 'grid',
-    gridTemplateColumns: windowWidth <= 768 ? '1fr' : '2fr 1fr 1fr 1fr',
-    gap: windowWidth <= 768 ? '32px' : '48px',
-    padding: windowWidth <= 768 ? '48px 0 32px 0' : '64px 0 48px 0',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.3)'
-  };
+const footerMainStyle = {
+  display: 'grid',
+  gridTemplateColumns: windowWidth <= 768 ? '1fr' : 'minmax(0, 2fr) minmax(0, 3fr)',
+  gap: windowWidth <= 768 ? '32px' : '48px',
+  padding: windowWidth <= 768 ? '48px 0 32px 0' : '64px 0 48px 0',
+  borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+  alignItems: 'start'
+};
+
+  const rightColumnsStyle = {
+  display: 'grid',
+  gridTemplateColumns: windowWidth <= 768 ? '1fr' : 'repeat(3, minmax(0, 1fr))',
+  gap: windowWidth <= 768 ? '24px' : '32px'
+};
 
   const footerBrandStyle = {
     display: 'flex',
@@ -831,23 +822,25 @@ const carouselImageStyle = {
     lineHeight: 1.4
   };
 
-  const footerBottomStyle = {
-    padding: '24px 0'
+  const footerBottomStyle = {         
+    padding: windowWidth <= 768 ? '12px 0' : '10px 0',
+    marginTop: '0',
+     borderTop: '1px solid #9ca3af'
   };
 
   const footerBottomContentStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
+    display: windowWidth <= 768 ? 'flex' : 'grid',
+    gridTemplateColumns: windowWidth <= 768 ? '1fr' : 'repeat(5, minmax(0, 1fr))',
+    gap: windowWidth <= 768 ? '8px' : '16px',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: '16px'
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: windowWidth <= 768 ? '8px 16px' : '12px 24px',
+    color: '#6b7280',
   };
 
   const footerCopyrightStyle = {
-    background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
+    color: '#6b7280',
     fontSize: '14px',
     fontWeight: 500,
     margin: 0,
@@ -856,30 +849,24 @@ const carouselImageStyle = {
 
   const footerBottomLinksStyle = {
     display: 'flex',
-    gap: '24px'
+    gap: '20px',
+    alignItems: 'center'
   };
 
   const footerBottomLinkStyle = {
-    background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
+    color: '#6b7280',
     textDecoration: 'none',
     fontSize: '14px',
     fontWeight: 500,
     letterSpacing: '0.025em',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    cursor: 'pointer',
-    position: 'relative',
-    ':hover': {
-      transform: 'translateY(-1px)'
-    }
+    transition: 'all 0.18s ease',
+    cursor: 'pointer'
   };
 
   const servicesContainerStyle = {
-    maxWidth: '1200px',
+    maxWidth: '1400px',
     margin: '0 auto',
-    padding: windowWidth <= 768 ? '0 16px' : '0'
+    padding: windowWidth <= 768 ? '0 16px' : '0 24px'
   };
 
 const sectionEyebrowStyle = {
@@ -938,10 +925,15 @@ const servicesHeaderWrapStyle = {
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
   };
 
+  // Updated 5-column grid layout
   const servicesGridStyle = {
     display: 'grid',
-    gridTemplateColumns: windowWidth <= 768 ? '1fr' : 'repeat(3, minmax(0, 1fr))',
-    gap: windowWidth <= 768 ? '16px' : '20px',
+    gridTemplateColumns: windowWidth <= 768 ? '1fr' : 
+                         windowWidth <= 992 ? 'repeat(2, minmax(0, 1fr))' :
+                         windowWidth <= 1200 ? 'repeat(3, minmax(0, 1fr))' :
+                         windowWidth <= 1400 ? 'repeat(4, minmax(0, 1fr))' : 
+                         'repeat(5, minmax(0, 1fr))',
+    gap: windowWidth <= 768 ? '16px' : '24px',
     alignItems: 'stretch'
   };
 
@@ -1362,7 +1354,7 @@ const servicesHeaderWrapStyle = {
   const [modalService, setModalService] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [servicesSlide, setServicesSlide] = useState(0);
-  const [visibleCount, setVisibleCount] = useState(4);
+  const [visibleCount, setVisibleCount] = useState(5);
   const cardWidthPercent = 100 / (visibleCount || 1);
   const carouselRef = useRef(null);
   // Helpers for infinite carousel scrolling (uses duplicated items in the DOM)
@@ -1587,25 +1579,6 @@ const servicesHeaderWrapStyle = {
   });
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-
-  // Debug helper: log the selectedPaymentNotification whenever it changes
-  // This helps capture the exact shape of notification.data when a modal is opened.
-  useEffect(() => {
-    if (!selectedPaymentNotification) return;
-    try {
-      // Expose for easy inspection from browser Console
-      try { window.__lastSelectedPaymentNotification = selectedPaymentNotification; } catch (e) { /* ignore */ }
-      console.log('selectedPaymentNotification (object):', selectedPaymentNotification);
-      // Also print a JSON string that's easy to copy
-      try {
-        console.log('selectedPaymentNotification (json):', JSON.stringify(selectedPaymentNotification, null, 2));
-      } catch (e) {
-        console.log('selectedPaymentNotification (json): <could not stringify>', e);
-      }
-    } catch (e) {
-      // swallow errors in debug logging
-    }
-  }, [selectedPaymentNotification]);
   const today = new Date();
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
   const [calendarMonth, setCalendarMonth] = useState(today.getMonth()); // 0-11
@@ -1810,11 +1783,11 @@ const servicesHeaderWrapStyle = {
     // Responsive services grid
     const setResponsive = () => {
       const w = window.innerWidth;
-      if (w >= 1400) { setVisibleCount(4); setServiceCols(5); setServiceCardH(220); }
-      else if (w >= 1100) { setVisibleCount(4); setServiceCols(4); setServiceCardH(200); }
-      else if (w >= 860) { setVisibleCount(3); setServiceCols(3); setServiceCardH(190); }
-      else if (w >= 560) { setVisibleCount(2); setServiceCols(2); setServiceCardH(180); }
-      else { setVisibleCount(1); setServiceCols(1); setServiceCardH(160); }
+      if (w >= 1400) { setVisibleCount(5); setServiceCols(5); setServiceCardH(240); }
+      else if (w >= 1200) { setVisibleCount(4); setServiceCols(4); setServiceCardH(220); }
+      else if (w >= 992) { setVisibleCount(3); setServiceCols(3); setServiceCardH(200); }
+      else if (w >= 768) { setVisibleCount(2); setServiceCols(2); setServiceCardH(190); }
+      else { setVisibleCount(1); setServiceCols(1); setServiceCardH(180); }
     };
     setResponsive();
     window.addEventListener('resize', setResponsive);
@@ -2164,15 +2137,6 @@ const servicesHeaderWrapStyle = {
     }
   };
 
-  // Handle clicking a notification item in the Notifications page
-  const handleNotificationItemClick = async (notification, origIndex) => {
-    if (!notification) return;
-    try { await NotificationService.markAsRead(notification.id); } catch (e) { /* ignore */ }
-    // Keep notification selected; do not auto-open payment modal from the card.
-    setSelectedNotification(notification);
-    // Payment actions are provided explicitly via the 'Proceed to payment' button inside each notification.
-  };
-
   const deleteNotification = (index) => {
     const notification = notifications[index];
     if (notification) {
@@ -2286,31 +2250,24 @@ const servicesHeaderWrapStyle = {
           const formattedDate = data.booking.date || 'your booking date';
 
           // Prepare readable amounts with thousands separator
-          const paidFormatted = formatCurrency(paymentAmount);
-          const totalFormatted = formatCurrency(amount);
+          const paidFormatted = `₱${Number(paymentAmount).toLocaleString()}`;
+          const totalFormatted = `₱${Number(amount).toLocaleString()}`;
 
           // Build message body depending on payment type (downpayment vs full)
           let messageBody = '';
           if (paymentType === 'downpayment' || paymentType === 'partial') {
             const remaining = Number(amount) - Number(paymentAmount);
-            const remainingFormatted = formatCurrency(remaining);
+            const remainingFormatted = `₱${Number(remaining).toLocaleString()}`;
             messageBody = `We received your downpayment of ${paidFormatted} for "${data.booking.service}" on ${formattedDate}. Remaining balance: ${remainingFormatted}.`;
           } else {
-            messageBody = `We received your full payment of ${paidFormatted} for "${data.booking.service}" on ${formattedDate}.`;
+            messageBody = `We received your full payment of ${paidFormatted} for "${data.booking.service}" on ${formattedDate}. Thank you!`;
           }
 
           // Create user notification (do not include transaction IDs)
-          const recipientName = (user && (user.firstName || user.first_name || user.name))
-            ? `${user.firstName || user.first_name || user.name}${(user.lastName || user.last_name) ? ' ' + (user.lastName || user.last_name) : ''}`
-            : 'Customer';
-
-          const isDownpayment = (paymentType === 'downpayment' || paymentType === 'partial');
-          const notificationPayload = {
+          NotificationService.createNotification(user.email, {
             type: 'success',
-            title: isDownpayment ? 'Downpayment Received' : 'Payment Received',
-            message: isDownpayment
-              ? messageBody
-              : `Dear ${recipientName},\n\nWe're delighted to confirm that your payment of ${paidFormatted} has been successfully received!`,
+            title: paymentType === 'downpayment' || paymentType === 'partial' ? 'Downpayment Received' : 'Payment Confirmed',
+            message: messageBody,
             data: {
               bookingId: data.bookingId,
               invoiceId: data.invoiceId,
@@ -2321,9 +2278,7 @@ const servicesHeaderWrapStyle = {
               service: data.booking.service,
               date: data.booking.date
             }
-          };
-
-          NotificationService.createNotification(user.email, notificationPayload);
+          });
           
           console.log('✅ Notification created successfully');
           
@@ -2368,53 +2323,52 @@ const servicesHeaderWrapStyle = {
     }
   };
 
-  // Render notification message with readable paragraphs. Preserve legacy <payment-link> tags.
+  // Render notification message with clickable payment link
   const renderNotificationMessage = (notification) => {
     const message = notification.message || '';
     const hasPaymentLink = message.includes('<payment-link>');
-
-    if (hasPaymentLink) {
-      const parts = message.split(/<payment-link>|<\/payment-link>/);
-      const data = notification.data || {};
-      const origin = window.location && window.location.origin ? window.location.origin : '';
-      const link = data.paymentLink || (data.exact ? `${origin}/pay-exact?invoiceId=${data.invoiceId || data.invoice_id || ''}${data.amount ? `&amount=${encodeURIComponent(data.amount)}` : ''}${data.forceFull ? '&forceFull=1' : ''}` : `${origin}/payment?invoiceId=${data.invoiceId || data.invoice_id || ''}${data.amount ? `&amount=${encodeURIComponent(data.amount)}` : ''}`);
-      return (
-        <div style={{ color: '#4b5563' }}>
-          {parts.map((part, index) => {
-            if (index % 2 === 1) {
-              return (
-                <a
-                  key={index}
-                  href={link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ color: '#0ea5e9', fontWeight: 700, textDecoration: 'underline' }}
-                >
-                  {part}
-                </a>
-              );
-            }
-            return <span key={index}>{part}</span>;
-          })}
-        </div>
-      );
+    
+    console.log('Rendering notification:', { message, hasPaymentLink, notification });
+    
+    if (!hasPaymentLink) {
+      return <div style={{ color: '#4b5563' }}>{message}</div>;
     }
-
-    const paragraphs = String(message).split(/\n\s*\n/);
-    const data = notification.data || {};
-    const hasPayment = data.paymentLink || data.invoiceId || data.invoice_id || data.amount || notification.type === 'reminder';
-    const origin = window.location && window.location.origin ? window.location.origin : '';
-    const link = data.paymentLink || (data.exact ? `${origin}/pay-exact?invoiceId=${data.invoiceId || data.invoice_id || ''}${data.amount ? `&amount=${encodeURIComponent(data.amount)}` : ''}${data.forceFull ? '&forceFull=1' : ''}` : `${origin}/payment?invoiceId=${data.invoiceId || data.invoice_id || ''}${data.amount ? `&amount=${encodeURIComponent(data.amount)}` : ''}`);
-
+    
+    // Split message by payment link tags
+    const parts = message.split(/<payment-link>|<\/payment-link>/);
+    
     return (
       <div style={{ color: '#4b5563' }}>
-        {paragraphs.map((p, i) => (
-          <p key={i} style={{ margin: i === paragraphs.length - 1 ? 0 : '0 0 10px 0' }}>{p}</p>
-        ))}
-        {hasPayment && (
-          <p style={{ marginTop: 10 }}><a href={link} target="_blank" rel="noopener noreferrer" style={{ color: '#0ea5e9', fontWeight: 700 }}>Please proceed to payment.</a></p>
-        )}
+        {parts.map((part, index) => {
+          // Every odd index is the clickable "payment" text
+          if (index % 2 === 1) {
+            return (
+              <span
+                key={index}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('Payment link clicked!');
+                  console.log('Full notification object:', notification);
+                  console.log('Notification.data:', notification.data);
+                  console.log('Notification.data.bookingId:', notification.data?.bookingId);
+                  console.log('Notification.data.amount:', notification.data?.amount);
+                  setSelectedPaymentNotification(notification);
+                  setShowPaymentModal(true);
+                  console.log('Payment modal opened. Waiting for user to submit form...');
+                }}
+                style={{
+                  color: '#0ea5e9',
+                  fontWeight: 700,
+                  textDecoration: 'underline',
+                  cursor: 'pointer'
+                }}
+              >
+                {part}
+              </span>
+            );
+          }
+          return <span key={index}>{part}</span>;
+        })}
       </div>
     );
   };
@@ -2658,19 +2612,19 @@ const servicesHeaderWrapStyle = {
   };
 
   // Instrument Request Handlers
-  const handleOpenInstrumentRequest = (mode) => {
-    // mode: optional 'borrow'|'rent'. If not supplied, infer from current user.role.
-    // Open the InstrumentRental or InstrumentBorrowing view in a new tab (standalone route)
+  const handleOpenInstrumentRequest = () => {
+    // Open the InstrumentRental view in a new tab (standalone route)
     if (!user) {
       setToast({ type: 'error', message: 'Please login to request instruments' });
       return;
     }
     // Close any open modal in the current tab
     setModalService(null);
-    // Decide which hash route to open: members/privileged users should see borrowing
-    const resolvedMode = mode || (user && user.role && user.role === 'user' ? 'rent' : 'borrow');
-    const hash = resolvedMode === 'borrow' ? '#/instrument-borrowing' : '#/instrument-booking';
-    const url = `${window.location.origin}${window.location.pathname}${hash}`;
+    // Build full URL to hash route used by the SPA
+    // If the logged-in role is a regular 'user', open instrument booking (rental).
+    // Otherwise (members/admins), open instrument borrowing.
+    const routeHash = (user && user.role === 'user') ? '#/instrument-booking' : '#/instrument-borrowing';
+    const url = `${window.location.origin}${window.location.pathname}${routeHash}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -2892,7 +2846,7 @@ const servicesHeaderWrapStyle = {
               const menuOpen = openNotificationMenu === n.id;
               
               return (
-                <div key={n.id || idx} style={{ padding: 16, borderRadius: 12, border: '1px solid rgba(11,59,120,0.06)', background: n.read ? '#ffffff' : '#eef6ff', position: 'relative', cursor: 'default' }}>
+                <div key={n.id || idx} style={{ padding: 16, borderRadius: 12, border: '1px solid rgba(11,59,120,0.06)', background: n.read ? '#ffffff' : '#eef6ff', position: 'relative' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 800, color: '#06264a' }}>{n.title}</div>
@@ -3004,7 +2958,6 @@ const servicesHeaderWrapStyle = {
                       )}
                     </div>
                   </div>
-                  {/* No inline CTA buttons — payment link is provided inside the notification message as a text link */}
                 </div>
               );
             })}
@@ -3015,19 +2968,6 @@ const servicesHeaderWrapStyle = {
       {/* Home view */}
       {currentView === 'home' && (
         <div style={containerStyle}>
-          {/* Test Payment Modal Trigger removed (no floating test button on home) */}
-          <ErrorBoundary onError={(err, info) => {
-            console.error('ErrorBoundary (TestPaymentGateway) captured error', err, info && info.componentStack);
-            // Expose last props to window for debugging convenience
-            try { window.__lastTestPaymentProps = { amount: selectedPaymentNotification?.data?.amount, bookingDetails: selectedPaymentNotification?.data }; } catch(e) {}
-          }}>
-            <TestPaymentGateway
-              open={showTestPaymentModal}
-              onClose={() => setShowTestPaymentModal(false)}
-              amount={selectedPaymentNotification?.data?.amount || 500}
-              bookingDetails={selectedPaymentNotification?.data}
-            />
-          </ErrorBoundary>
           {/* small local styles for navbar animations and focus */}
           <style>{`
             .nav-fade { transition: opacity 220ms ease, transform 220ms ease; }
@@ -3095,6 +3035,7 @@ const servicesHeaderWrapStyle = {
           <nav style={{ ...navStyle, alignItems: 'center' }} aria-label="Main navigation">
             {/* Left: Logo with extra left spacing */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: '50px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}></div>
               <a href="#home" onClick={(e) => handleNavClick(e, '#home')} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <img 
                   src="/logo.png" 
@@ -3183,53 +3124,57 @@ const servicesHeaderWrapStyle = {
                     </button>
 
                     {showUserMenu && (
-                      <div id="user-menu" role="menu" style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, background: '#ffffff', border: '1px solid rgba(15, 76, 129, 0.08)', borderRadius: '12px', padding: '12px', minWidth: '260px', boxShadow: '0 12px 28px rgba(2,6,23,0.18)', zIndex: 1200 }}>
-                        {/* Header */}
-                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '8px 6px', borderBottom: '1px solid rgba(11,59,120,0.04)' }}>
-                          <div style={{ width: 52, height: 52, borderRadius: 12, overflow: 'hidden', background: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b3b78', fontWeight: 800, fontSize: 18 }}>
+                      <div id="user-menu" role="menu" style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, background: '#ffffff', border: '1px solid rgba(15, 76, 129, 0.08)', borderRadius: '12px', padding: '14px', minWidth: '240px', boxShadow: '0 12px 28px rgba(2,6,23,0.18)', zIndex: 1200 }}>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid rgba(11,59,120,0.04)' }}>
+                          <div style={{ width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', background: '#e6f2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b3b78', fontWeight: 800, fontSize: '18px' }}>
                             {user?.avatar ? (
                               <img src={user.avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
                               (user.firstName || user.email || 'U').charAt(0).toUpperCase()
                             )}
                           </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 800, fontSize: 15, color: '#06264a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (user.email || '').split('@')[0]}</div>
-                            <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</div>
-                            {/* Manage account link removed per request */}
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '15px', color: '#06264a' }}>{user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (user.email || '').split('@')[0]}</div>
+                            <div style={{ fontSize: '12px', color: '#1e4f8a', marginTop: '3px' }}>{user.email}</div>
                           </div>
                         </div>
 
-                        {/* Actions */}
-                        <div style={{ paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <a href="#profile" onClick={(e) => { e.preventDefault(); openProfile(); setShowUserMenu(false); }} style={menuItemStyle}>
-                            <FaUser size={14} color="#0b62d6" />
-                            <span>View profile</span>
+                        <div style={{ marginTop: '12px', display: 'grid', gap: '8px' }}>
+                          {/* Avatar controls for all users */}
+                          {/* Avatar editing moved to profile page. Preview only shown above. */}
+                          <a href="#profile" onClick={(e) => { e.preventDefault(); openProfile(); }} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px', borderRadius: '8px', textDecoration: 'none', color: '#0b3b78', fontWeight: 600 }}>
+                            <FaUser style={{ color: '#0b62d6', minWidth: '18px' }} />
+                            <span>View Profile</span>
                           </a>
 
-                          <a href="#bookings" onClick={(e) => { e.preventDefault(); window.open('/bookings', '_blank'); setShowUserMenu(false); }} style={menuItemStyle}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ minWidth: '18px' }}><path d="M3 12h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 6h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 18h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          <a href="#bookings" onClick={(e) => { e.preventDefault(); navigate('/bookings'); setShowUserMenu(false); }} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px', borderRadius: '8px', textDecoration: 'none', color: '#0b3b78', fontWeight: 600 }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ minWidth: '18px' }}>
+                              <path d="M3 12h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M3 6h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M3 18h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
                             <span>Bookings</span>
                           </a>
 
-                          <a href="#instruments" onClick={(e) => { e.preventDefault(); handleOpenInstrumentRequest(user.role === 'user' ? 'rent' : 'borrow'); setShowUserMenu(false); }} style={menuItemStyle}>
-                            <FaMusic size={14} color="#0b62d6" />
-                            <span>{user.role === 'user' ? 'Rent instrument' : 'Borrow instrument'}</span>
+                          <a href="#instruments" onClick={(e) => { e.preventDefault(); handleOpenInstrumentRequest(); setShowUserMenu(false); }} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px', borderRadius: '8px', textDecoration: 'none', color: '#0b3b78', fontWeight: 600 }}>
+                            <FaMusic style={{ color: '#0b62d6', minWidth: '18px' }} />
+                            <span>{user.role === 'user' ? 'Rent Instrument' : 'Borrow Instrument'}</span>
                           </a>
 
                           {user.role === 'admin' && (
-                            <a href="#dashboard" onClick={(e) => { e.preventDefault(); if (user?.role === 'admin') { setCurrentView('dashboard'); } else { alert('Dashboard access is restricted to administrators.'); } setShowUserMenu(false); }} style={menuItemStyle}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ minWidth: '18px' }}><path d="M3 12h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 6h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 18h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              <span>Admin dashboard</span>
+                            <a href="#dashboard" onClick={(e) => { e.preventDefault(); if (user?.role === 'admin') { setCurrentView('dashboard'); } else { alert('Dashboard access is restricted to administrators.'); } setShowUserMenu(false); }} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px', borderRadius: '8px', textDecoration: 'none', color: '#0b3b78', fontWeight: 600 }}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ minWidth: '18px' }}>
+                                <path d="M3 12h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M3 6h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M3 18h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              <span>Admin Dashboard</span>
                             </a>
                           )}
 
-                          <div style={{ height: '1px', background: 'rgba(11,59,120,0.06)', margin: '8px 0' }} />
+                          <div style={{ height: '1px', background: 'rgba(11,59,120,0.06)', margin: '6px 0' }} />
 
-                          <button onClick={() => { handleLogout(); setShowUserMenu(false); }} style={{ width: '100%', padding: '10px', borderRadius: 10, border: 'none', background: '#0b62d6', color: 'white', fontWeight: 800, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                            <FaSignOutAlt size={14} color="#ffffff" />
-                            Sign out
-                          </button>
+                          <button onClick={() => { handleLogout(); setShowUserMenu(false); }} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: 'none', background: '#0b62d6', color: 'white', fontWeight: 800, cursor: 'pointer' }}>Sign Out</button>
                         </div>
                       </div>
                     )}
@@ -3260,14 +3205,16 @@ const servicesHeaderWrapStyle = {
                       <div style={{
                         position: 'absolute',
                         top: '100%',
-                        right: '70%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
                         marginTop: '8px',
                         background: 'white',
                         borderRadius: '12px',
                         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
                         padding: '8px',
                         minWidth: '200px',
-                        zIndex: 1000
+                        zIndex: 1000,
+                        textAlign: 'center'
                       }}>
                         <button
                           onClick={() => { handleShowLogin(); setShowAuthMenu(false); }}
@@ -3505,198 +3452,159 @@ const servicesHeaderWrapStyle = {
                 </p>
               </div>
 
-              {/* Services Carousel */}
+              {/* Services Grid - 5 columns */}
               <div style={{ position: 'relative', maxWidth: '1400px', margin: '0 auto', padding: windowWidth <= 768 ? '0 16px' : '0 24px' }}>
-                <div ref={carouselRef} style={{ overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                  <div 
-                    style={{ 
-                      display: 'flex', 
-                      gap: '24px' 
-                    }}
-                  >
-                    {services.concat(services).map((service, index) => (
-                      <div key={`${service.title}-${index}`} style={{ width: '300px', flexShrink: 0 }}>
-                        <article 
-                          className="scroll-reveal" 
+                <div style={servicesGridStyle}>
+                  {services.map((service, index) => (
+                    <article 
+                      key={service.title}
+                      className="scroll-reveal" 
+                      style={{ 
+                        ...cardStyle,
+                        height: '380px'
+                      }} 
+                      onClick={() => setModalService(service)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-8px)';
+                        e.currentTarget.style.boxShadow = '0 20px 60px rgba(2,6,23,0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 10px 40px rgba(2,6,23,0.08)';
+                      }}
+                    >
+                      <div style={{ position: 'relative', height: 200, overflow: 'hidden' }}>
+                        <img 
+                          src={service.img} 
+                          alt={service.title} 
                           style={{ 
-                            height: '380px',
-                            display: 'flex', 
-                            flexDirection: 'column',
-                            borderRadius: '20px', 
-                            overflow: 'hidden', 
-                            background: '#fff', 
-                            border: '1px solid rgba(15,23,42,0.08)', 
-                            boxShadow: '0 10px 40px rgba(2,6,23,0.08)', 
-                            cursor: 'pointer',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            position: 'relative'
+                            width: '100%', 
+                            height: '100%', 
+                            objectFit: 'cover', 
+                            display: 'block', 
+                            transition: 'transform 0.3s ease' 
                           }} 
-                          onClick={() => setModalService(service)}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-8px)';
-                            e.currentTarget.style.boxShadow = '0 20px 60px rgba(2,6,23,0.15)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 10px 40px rgba(2,6,23,0.08)';
-                          }}
-                        >
-                          <div style={{ position: 'relative', height: 200, overflow: 'hidden' }}>
-                            <img src={service.img} alt={service.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.3s ease' }} />
-                            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(2,6,23,0.3) 100%)' }} />
-                            <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(255,255,255,0.9)', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1e40af', fontSize: '18px' }}>
-                              {service.icon}
-                            </div>
-                            <div style={{ position: 'absolute', left: 12, bottom: 12, color: '#fff', fontWeight: 700, fontSize: 18, textShadow: '0 2px 8px rgba(2,6,23,0.5)', lineHeight: 1.2 }}>
-                              {service.title}
-                            </div>
-                          </div>
-                          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
-                            <p style={{ margin: 0, color: '#475569', fontSize: '14px', lineHeight: 1.5, flex: 1 }}>
-                              {service.description && service.description.length > 140 ? `${service.description.slice(0, 137)}...` : service.description}
-                            </p>
-                            <div style={{ display: 'flex', gap: 10, marginTop: 'auto' }}>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); if (service.title === 'Instrument Rentals') { handleOpenInstrumentRequest(); } else { setModalService(service); } }} 
-                                style={{ 
-                                  flex: 1, 
-                                  padding: '10px 16px', 
-                                  borderRadius: '10px', 
-                                  border: 'none', 
-                                  background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', 
-                                  color: '#fff', 
-                                  fontWeight: 600, 
-                                  cursor: 'pointer', 
-                                  fontSize: '13px',
-                                  transition: 'all 0.2s ease',
-                                  boxShadow: '0 4px 12px rgba(30, 64, 175, 0.3)'
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.target.style.transform = 'translateY(-2px)';
-                                  e.target.style.boxShadow = '0 6px 16px rgba(30, 64, 175, 0.4)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.target.style.transform = 'translateY(0)';
-                                  e.target.style.boxShadow = '0 4px 12px rgba(30, 64, 175, 0.3)';
-                                }}
-                              >
-                                {service.title === 'Instrument Rentals' ? 'Request Now' : 'Book Now'}
-                              </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setModalService(service); }} 
-                                style={{ 
-                                  padding: '10px 16px', 
-                                  borderRadius: '10px', 
-                                  border: '2px solid #e2e8f0', 
-                                  background: 'transparent', 
-                                  color: '#475569', 
-                                  fontWeight: 600, 
-                                  cursor: 'pointer', 
-                                  fontSize: '13px',
-                                  transition: 'all 0.2s ease'
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.target.style.borderColor = '#cbd5e1';
-                                  e.target.style.background = '#f8fafc';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.target.style.borderColor = '#e2e8f0';
-                                  e.target.style.background = 'transparent';
-                                }}
-                              >
-                                Learn More
-                              </button>
-                            </div>
-                          </div>
-                        </article>
+                        />
+                        <div style={{ 
+                          position: 'absolute', 
+                          inset: 0, 
+                          background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(2,6,23,0.3) 100%)' 
+                        }} />
+                        <div style={{ 
+                          position: 'absolute', 
+                          top: 12, 
+                          left: 12, 
+                          background: 'rgba(255,255,255,0.9)', 
+                          borderRadius: '50%', 
+                          width: 40, 
+                          height: 40, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          color: '#1e40af', 
+                          fontSize: '18px' 
+                        }}>
+                          {service.icon}
+                        </div>
+                        <div style={{ 
+                          position: 'absolute', 
+                          left: 12, 
+                          bottom: 12, 
+                          color: '#fff', 
+                          fontWeight: 700, 
+                          fontSize: 16,
+                          textShadow: '0 2px 8px rgba(2,6,23,0.5)', 
+                          lineHeight: 1.2 
+                        }}>
+                          {service.title}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                      <div style={{ 
+                        padding: '16px', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: 12, 
+                        flex: 1 
+                      }}>
+                        <p style={{ 
+                          margin: 0, 
+                          color: '#475569', 
+                          fontSize: '13px',
+                          lineHeight: 1.5, 
+                          flex: 1 
+                        }}>
+                          {service.description && service.description.length > 100 ? 
+                            `${service.description.slice(0, 97)}...` : service.description}
+                        </p>
+                        <div style={{ 
+                          display: 'flex', 
+                          gap: 8,
+                          marginTop: 'auto' 
+                        }}>
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              if (service.title === 'Instrument Rentals') { 
+                                handleOpenInstrumentRequest(); 
+                              } else { 
+                                openBooking(service.title); 
+                              } 
+                            }} 
+                            style={{ 
+                              flex: 1, 
+                              padding: '8px 12px',
+                              borderRadius: '8px', 
+                              border: 'none', 
+                              background: 'linear-gradient(135deg, #1e40af 0%, #06b6d4 100%)', 
+                              color: '#fff', 
+                              fontWeight: 600, 
+                              cursor: 'pointer', 
+                              fontSize: '12px',
+                              transition: 'all 0.2s ease',
+                              boxShadow: '0 4px 12px rgba(30, 64, 175, 0.3)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)';
+                              e.currentTarget.style.boxShadow = '0 12px 32px rgba(59, 130, 246, 0.4)';
+                              e.currentTarget.style.background = 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                              e.currentTarget.style.boxShadow = '0 8px 24px rgba(59, 130, 246, 0.3)';
+                              e.currentTarget.style.background = 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
+                            }}
+                          >
+                            {service.title === 'Instrument Rentals' ? 'Request Now' : 'Book Now'}
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setModalService(service); }} 
+                            style={{ 
+                              padding: '8px 12px',
+                              borderRadius: '8px', 
+                              border: '2px solid #e2e8f0', 
+                              background: 'transparent', 
+                              color: '#475569', 
+                              fontWeight: 600, 
+                              cursor: 'pointer', 
+                              fontSize: '12px',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.borderColor = '#cbd5e1';
+                              e.target.style.background = '#f8fafc';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.borderColor = '#e2e8f0';
+                              e.target.style.background = 'transparent';
+                            }}
+                          >
+                            Learn More
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
                 </div>
-                
-                {/* Carousel navigation buttons (icons) */}
-                <button
-                  onClick={() => { scrollPrev(); }}
-                  onMouseDown={() => startAutoScroll('prev')}
-                  onMouseUp={stopAutoScroll}
-                  onTouchStart={() => startAutoScroll('prev')}
-                  onTouchEnd={stopAutoScroll}
-                  aria-label="Previous services"
-                  style={{
-                    position: 'absolute',
-                    left: windowWidth <= 768 ? '-24px' : '-40px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    zIndex: 20,
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '50%',
-                    border: 'none',
-                    background: 'rgba(255,255,255,0.95)',
-                    color: '#1e40af',
-                    fontSize: '18px',
-                    cursor: 'pointer',
-                    boxShadow: '0 6px 18px rgba(0,0,0,0.08)',
-                    transition: 'all 0.18s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#1e40af';
-                    e.currentTarget.style.color = '#fff';
-                    e.currentTarget.style.transform = 'translateY(-50%) scale(1.05)';
-                  }}
-                  onMouseLeave={(e) => {
-                    stopAutoScroll();
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.95)';
-                    e.currentTarget.style.color = '#1e40af';
-                    e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
-                  }}
-                >
-                  <FaChevronLeft />
-                </button>
-                <button
-                  onClick={() => { scrollNext(); }}
-                  onMouseDown={() => startAutoScroll('next')}
-                  onMouseUp={stopAutoScroll}
-                  onTouchStart={() => startAutoScroll('next')}
-                  onTouchEnd={stopAutoScroll}
-                  aria-label="Next services"
-                  style={{
-                    position: 'absolute',
-                    right: windowWidth <= 768 ? '-24px' : '-40px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    zIndex: 20,
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '50%',
-                    border: 'none',
-                    background: 'rgba(255,255,255,0.95)',
-                    color: '#1e40af',
-                    fontSize: '18px',
-                    cursor: 'pointer',
-                    boxShadow: '0 6px 18px rgba(0,0,0,0.08)',
-                    transition: 'all 0.18s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#1e40af';
-                    e.currentTarget.style.color = '#fff';
-                    e.currentTarget.style.transform = 'translateY(-50%) scale(1.05)';
-                  }}
-                  onMouseLeave={(e) => {
-                    stopAutoScroll();
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.95)';
-                    e.currentTarget.style.color = '#1e40af';
-                    e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
-                  }}
-                >
-                  <FaChevronRight />
-                </button>
               </div>
             </div>
           </section>
@@ -3769,14 +3677,14 @@ const servicesHeaderWrapStyle = {
                       <div style={contactIconStyle}><FaEnvelope /></div>
                       <div>
                         <h5 style={contactLabelStyle}>Email</h5>
-                        <p style={contactValueStyle}>dbe.official@example.com</p>
+                        <p style={contactValueStyle}>service.dbemb@gmail.com</p>
                       </div>
                     </div>
                     <div style={contactInfoItemStyle}>
                       <div style={contactIconStyle}><FaPhoneAlt /></div>
                       <div>
                         <h5 style={contactLabelStyle}>Phone</h5>
-                        <p style={contactValueStyle}>+63 900 000 0000</p>
+                        <p style={contactValueStyle}>0968 668 1502</p>
                       </div>
                     </div>
                     <div style={contactInfoItemStyle}>
@@ -3914,31 +3822,20 @@ const servicesHeaderWrapStyle = {
             </div>
           </section>
 
-          {/* Modal - redesigned service info */}
-          {modalService && (
-            <div style={modalOverlayStyle} onClick={closeModal}>
-              <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
-                <div style={modalHeaderStyle}>
-                  <h3 style={modalTitleStyle}>{modalService.title}</h3>
-                  <button onClick={closeModal} style={{ background: 'transparent', border: 'none', color: '#6b7280', fontSize: '24px', cursor: 'pointer' }}>&times;</button>
-                </div>
-                <div style={modalBodyStyle}>
-                  <p style={{ color: '#374151', lineHeight: 1.6 }}>{modalService.description}</p>
-                </div>
-                <div style={modalActionsStyle}>
-                  <button onClick={closeModal} style={closeButtonStyle}>Close</button>
-                  {modalService.title === 'Instrument Rentals' ? (
-                    <button onClick={() => {
-                      closeModal();
-                      handleOpenInstrumentRequest();
-                    }} style={bookButtonStyle}>Request Instruments</button>
-                  ) : (
-                    <button onClick={() => openBooking()} style={bookButtonStyle}>Book Now</button>
-                  )}
+            {/* Modal - service details only (for Learn More) */}
+            {modalService && (
+              <div style={modalOverlayStyle} onClick={closeModal}>
+                <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+                  <div style={modalHeaderStyle}>
+                    <h3 style={modalTitleStyle}>{modalService.title}</h3>
+                    <button onClick={closeModal} style={{ background: 'transparent', border: 'none', color: '#6b7280', fontSize: '24px', cursor: 'pointer' }}>&times;</button>
+                  </div>
+                  <div style={modalBodyStyle}>
+                    <p style={{ color: '#374151', lineHeight: 1.6, margin: 0 }}>{modalService.description}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Instrument Request modal removed — instrument requests now handled in InstrumentRental view */}
 
@@ -3963,7 +3860,7 @@ const servicesHeaderWrapStyle = {
             <div style={footerContainerStyle}>
               {/* Main Footer Content */}
               <div style={footerMainStyle}>
-                {/* Brand Section */}
+                {/* Brand (left 2/5) */}
                 <div style={footerBrandStyle}>
                   <div style={footerLogoStyle}>
                     <a 
@@ -3980,81 +3877,93 @@ const servicesHeaderWrapStyle = {
                   </p>
                   <div style={footerSocialStyle}>
                     <a href="#" style={socialLinkStyle} aria-label="Facebook">
-                      <FaFacebookF />
+                      <FaFacebookF style={socialIconStyle} />
                     </a>
                     <a href="#" style={socialLinkStyle} aria-label="Instagram">
-                      <FaInstagram />
+                      <FaInstagram style={socialIconStyle} />
                     </a>
                     <a href="#" style={socialLinkStyle} aria-label="YouTube">
-                      <FaYoutube />
+                      <FaYoutube style={socialIconStyle} />
                     </a>
                     <a href="#" style={socialLinkStyle} aria-label="Email">
-                      <FaEnvelope />
+                      <FaEnvelope style={socialIconStyle} />
                     </a>
                   </div>
                 </div>
 
-                {/* Quick Links */}
-                <div style={footerSectionStyle}>
-                  <h4 style={footerSectionTitleStyle}>Quick Links</h4>
-                  <ul style={footerLinkListStyle}>
-                    <li><a href="#home" onClick={(e) => handleNavClick(e, '#home')} style={footerLinkStyle} className="footer-link">Home</a></li>
-                    <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Services</a></li>
-                    <li><a href="#about" onClick={(e) => handleNavClick(e, '#about')} style={footerLinkStyle} className="footer-link">About Us</a></li>
-                    <li><a href="#contact" onClick={(e) => handleNavClick(e, '#contact')} style={footerLinkStyle} className="footer-link">Contact</a></li>
-                    <li><a href="#" style={footerLinkStyle} className="footer-link">Gallery</a></li>
-                    <li><a href="#" style={footerLinkStyle} className="footer-link">News & Events</a></li>
-                  </ul>
-                </div>
+                {/* Right side (3/5) - wrap the three columns */}
+                <div style={rightColumnsStyle}>
+                  {/* Quick Links */}
+                  <div style={footerSectionStyle}>
+                    <h4 style={footerSectionTitleStyle}>Quick Links</h4>
+                    <ul style={footerLinkListStyle}>
+                      <li><a href="#home" onClick={(e) => handleNavClick(e, '#home')} style={footerLinkStyle} className="footer-link">Home</a></li>
+                      <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Services</a></li>
+                      <li><a href="#about" onClick={(e) => handleNavClick(e, '#about')} style={footerLinkStyle} className="footer-link">About Us</a></li>
+                      <li><a href="#contact" onClick={(e) => handleNavClick(e, '#contact')} style={footerLinkStyle} className="footer-link">Contact</a></li>
+                      <li><a href="#" style={footerLinkStyle} className="footer-link">Gallery</a></li>
+                      <li><a href="#" style={footerLinkStyle} className="footer-link">News & Events</a></li>
+                    </ul>
+                  </div>
 
-                {/* Services */}
-                <div style={footerSectionStyle}>
-                  <h4 style={footerSectionTitleStyle}>Our Services</h4>
-                  <ul style={footerLinkListStyle}>
-                    <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Band Gigs</a></li>
-                    <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Music Arrangement</a></li>
-                    <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Parade Events</a></li>
-                    <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Music Workshops</a></li>
-                    <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Instrument Rentals</a></li>
-                    <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Custom Performances</a></li>
-                  </ul>
-                </div>
+                  {/* Our Services */}
+                  <div style={footerSectionStyle}>
+                    <h4 style={footerSectionTitleStyle}>Our Services</h4>
+                    <ul style={footerLinkListStyle}>
+                      <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Band Gigs</a></li>
+                      <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Music Arrangement</a></li>
+                      <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Parade Events</a></li>
+                      <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Music Workshops</a></li>
+                      <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Instrument Rentals</a></li>
+                      <li><a href="#services" onClick={(e) => handleNavClick(e, '#services')} style={footerLinkStyle} className="footer-link">Custom Performances</a></li>
+                    </ul>
+                  </div>
 
-                {/* Contact Info */}
-                <div style={footerSectionStyle}>
-                  <h4 style={footerSectionTitleStyle}>Contact Info</h4>
-                  <div style={footerContactListStyle}>
-                    <div style={footerContactItemStyle}>
-                      <span style={footerContactIconStyle}><FaMapMarkerAlt /></span>
-                      <span style={footerContactTextStyle}>Davao City, Philippines</span>
-                    </div>
-                    <div style={footerContactItemStyle}>
-                      <span style={footerContactIconStyle}><FaEnvelope /></span>
-                      <span style={footerContactTextStyle}>dbe.official@example.com</span>
-                    </div>
-                    <div style={footerContactItemStyle}>
-                      <span style={footerContactIconStyle}><FaPhoneAlt /></span>
-                      <span style={footerContactTextStyle}>+63 900 000 0000</span>
-                    </div>
-                    <div style={footerContactItemStyle}>
-                      <span style={footerContactIconStyle}><FaClock /></span>
-                      <span style={footerContactTextStyle}>Mon-Fri: 9AM-6PM</span>
+                  {/* Contact Info */}
+                  <div style={footerSectionStyle}>
+                    <h4 style={footerSectionTitleStyle}>Contact Info</h4>
+                    <div style={footerContactListStyle}>
+                      <div style={footerContactItemStyle}>
+                        <span style={footerContactIconStyle}><FaMapMarkerAlt /></span>
+                        <span style={footerContactTextStyle}>Davao City, Philippines</span>
+                      </div>
+                      <div style={footerContactItemStyle}>
+                        <span style={footerContactIconStyle}><FaEnvelope /></span>
+                        <span style={footerContactTextStyle}>service.dbemb@gmail.com</span>
+                      </div>
+                      <div style={footerContactItemStyle}>
+                        <span style={footerContactIconStyle}><FaPhoneAlt /></span>
+                        <span style={footerContactTextStyle}>0968 668 1502</span>
+                      </div>
+                      <div style={footerContactItemStyle}>
+                        <span style={footerContactIconStyle}><FaClock /></span>
+                        <span style={footerContactTextStyle}>Mon-Fri: 9AM-6PM</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+              </div>
 
               {/* Footer Bottom */}
-              <div style={footerBottomStyle}>
-                <div style={footerBottomContentStyle}>
+            <div style={{ ...footerBottomStyle, width: '100%' }}>
+              <div style={footerBottomContentStyle}>
+                {/* copyright — span 2 of 5 on wide screens */}
+                <div style={{ gridColumn: windowWidth <= 768 ? 'auto' : 'span 2' }}>
                   <p style={footerCopyrightStyle}>
                     © 2025 Davao Blue Eagles Marching Band. All rights reserved.
                   </p>
-                  <div style={footerBottomLinksStyle}>
-                    <a href="#" style={footerBottomLinkStyle} className="footer-bottom-link">Privacy Policy</a>
-                    <a href="#" style={footerBottomLinkStyle} className="footer-bottom-link">Terms of Service</a>
-                    <a href="#" style={footerBottomLinkStyle} className="footer-bottom-link">Cookie Policy</a>
-                  </div>
+                </div>
+
+                {/* three link columns (each occupies 1 column of the remaining 3) */}
+                <div style={{ textAlign: 'center' }}>
+                  <a href="#" style={footerBottomLinkStyle} className="footer-bottom-link">Privacy Policy</a>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <a href="#" style={footerBottomLinkStyle} className="footer-bottom-link">Terms of Service</a>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <a href="#" style={footerBottomLinkStyle} className="footer-bottom-link">Cookie Policy</a>
                 </div>
               </div>
             </div>
@@ -4146,7 +4055,7 @@ const servicesHeaderWrapStyle = {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                         <div style={{ flex: 1 }}>
                           <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
-                            {booking.service}
+                            Booking #{booking.id} - {booking.service}
                           </h3>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 12 }}>
                             <div>
@@ -4168,7 +4077,7 @@ const servicesHeaderWrapStyle = {
                             <div>
                               <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Amount</div>
                               <div style={{ fontSize: 16, fontWeight: 700, color: '#0369a1' }}>
-                                {formatCurrency(booking.estimatedValue || 0)}
+                                ₱{booking.estimatedValue?.toLocaleString()}
                               </div>
                             </div>
                           </div>
@@ -4198,30 +4107,14 @@ const servicesHeaderWrapStyle = {
                         {booking.status === 'approved' && (
                           <button 
                             onClick={() => {
-                              const payload = {
+                              setSelectedPaymentNotification({
                                 data: {
                                   bookingId: booking.id,
                                   amount: booking.estimatedValue,
                                   service: booking.service,
                                   date: booking.date
                                 }
-                              };
-                              setSelectedPaymentNotification(payload);
-                              // If this booking/notification requests full payment, force the form to full
-                              const pd = payload.data || {};
-                              let wantsFull = !!(pd && (pd.forceFull === true || pd.forceFull === 'true' || pd.forceFull === '1' || pd.paymentType === 'full' || pd.payment_type === 'full'));
-                              if (!wantsFull) {
-                                // Try parsing stringified JSON if necessary
-                                let parsed = pd;
-                                if (typeof pd === 'string') {
-                                  try { parsed = JSON.parse(pd); } catch (e) { parsed = { message: pd }; }
-                                }
-                                const msg = (parsed && (parsed.message || parsed.msg || parsed.note || '')) || '';
-                                if (typeof msg === 'string' && /partial|down[- ]?payment|partial\/down/i.test(msg) && /(not accepted|not allowed|are not accepted|please settle the full|must pay the full)/i.test(msg)) {
-                                  wantsFull = true;
-                                }
-                              }
-                              setPaymentForm(prev => ({ ...prev, paymentOption: wantsFull ? 'fullpayment' : 'fullpayment', selectedAmount: (wantsFull ? (pd.amount || 0) : (pd.amount || 0) * 0.5) }));
+                              });
                               setShowPaymentModal(true);
                               setShowMyBookings(false);
                             }}
@@ -4336,7 +4229,7 @@ const servicesHeaderWrapStyle = {
                   <div style={{ textAlign: 'center', marginBottom: 24 }}>
                     <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>Total Booking Amount</div>
                     <div style={{ fontSize: 36, fontWeight: 800, color: '#0c4a6e' }}>
-                      {formatCurrency((selectedPaymentNotification.data?.amount || selectedPaymentNotification.data?.paymentDetails?.totalAmount || 0))}
+                      ₱{(selectedPaymentNotification.data?.amount || selectedPaymentNotification.data?.paymentDetails?.totalAmount || 0).toLocaleString()}
                     </div>
                   </div>
                   
@@ -4344,47 +4237,30 @@ const servicesHeaderWrapStyle = {
                   <div style={{ display: 'flex', gap: 12, maxWidth: 500, margin: '0 auto' }}>
                     <div 
                       onClick={() => {
-                        // Prevent selecting downpayment when reminder forces full payment
-                        const pd = selectedPaymentNotification?.data || selectedPaymentNotification || {};
-                        let modalForceFull = !!(pd && (pd.forceFull === true || pd.forceFull === 'true' || pd.forceFull === '1' || pd.paymentType === 'full' || pd.payment_type === 'full'));
-                        if (!modalForceFull && typeof pd === 'string') {
-                          try {
-                            const p = JSON.parse(pd);
-                            modalForceFull = !!(p && (p.forceFull === true || p.paymentType === 'full'));
-                          } catch (e) { }
-                        }
-                        if (!modalForceFull) {
-                          const msg = (pd && (pd.message || pd.msg || pd.note)) || '';
-                          if (typeof msg === 'string' && /partial|down[- ]?payment|partial\/down/i.test(msg) && /(not accepted|not allowed|are not accepted|please settle the full|must pay the full)/i.test(msg)) {
-                            modalForceFull = true;
-                          }
-                        }
-                        if (modalForceFull) return;
                         const totalAmount = selectedPaymentNotification.data?.amount || 0;
-                        setPaymentForm(prev => ({...prev, paymentOption: 'downpayment', selectedAmount: totalAmount * 0.5}));
+                        setPaymentForm({...paymentForm, paymentOption: 'downpayment', selectedAmount: totalAmount * 0.5});
                       }}
                       style={{ 
                         flex: 1,
                         padding: '16px', 
                         border: `3px solid ${paymentForm.paymentOption === 'downpayment' ? '#10b981' : '#e2e8f0'}`, 
                         borderRadius: 12, 
-                        cursor: (selectedPaymentNotification?.data && (selectedPaymentNotification.data.forceFull === true || selectedPaymentNotification.data.paymentType === 'full')) ? 'not-allowed' : 'pointer',
+                        cursor: 'pointer',
                         background: paymentForm.paymentOption === 'downpayment' ? '#ecfdf5' : 'white',
                         transition: 'all 0.2s',
                         textAlign: 'center'
                       }}
-                      title={(selectedPaymentNotification?.data && (selectedPaymentNotification.data.forceFull === true || selectedPaymentNotification.data.paymentType === 'full')) ? 'Full payment required for this reminder' : ''}
                     >
                       <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>Down Payment (50%)</div>
                       <div style={{ fontSize: 24, fontWeight: 800, color: '#10b981' }}>
-                        {formatCurrency(((selectedPaymentNotification.data?.amount || 0) * 0.5))}
+                        ₱{((selectedPaymentNotification.data?.amount || 0) * 0.5).toLocaleString()}
                       </div>
                     </div>
                     
                     <div 
                       onClick={() => {
                         const totalAmount = selectedPaymentNotification.data?.amount || 0;
-                        setPaymentForm(prev => ({...prev, paymentOption: 'fullpayment', selectedAmount: totalAmount}));
+                        setPaymentForm({...paymentForm, paymentOption: 'fullpayment', selectedAmount: totalAmount});
                       }}
                       style={{ 
                         flex: 1,
@@ -4399,7 +4275,7 @@ const servicesHeaderWrapStyle = {
                     >
                       <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>Full Payment (100%)</div>
                       <div style={{ fontSize: 24, fontWeight: 800, color: '#0ea5e9' }}>
-                        {formatCurrency((selectedPaymentNotification.data?.amount || 0))}
+                        ₱{(selectedPaymentNotification.data?.amount || 0).toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -4558,7 +4434,7 @@ const servicesHeaderWrapStyle = {
                         Processing...
                       </>
                     ) : (
-                      <>Pay {formatCurrency((selectedPaymentNotification.data?.amount || selectedPaymentNotification.data?.paymentDetails?.totalAmount || 0))}</>
+                      <>Pay ₱{(selectedPaymentNotification.data?.amount || selectedPaymentNotification.data?.paymentDetails?.totalAmount || 0).toLocaleString()}</>
                     )}
                   </button>
                 </form>
@@ -4578,7 +4454,7 @@ const servicesHeaderWrapStyle = {
           style={{
             position: 'fixed',
             bottom: '30px',
-            right: currentView === 'home' ? '100px' : '30px',
+            left: currentView === 'home' ? '30px' : '30px',
             width: '50px',
             height: '50px',
             borderRadius: '50%',

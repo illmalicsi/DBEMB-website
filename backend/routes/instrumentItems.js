@@ -19,6 +19,9 @@ router.get('/', authenticateToken, async (req, res) => {
       search 
     } = req.query;
 
+    // If user asked for archived items, use is_active = FALSE, otherwise default to active items
+    const activeClause = (status === 'Archived') ? 'ii.is_active = FALSE' : 'ii.is_active = TRUE';
+
     let query = `
       SELECT 
         ii.*,
@@ -41,7 +44,7 @@ router.get('/', authenticateToken, async (req, res) => {
       LEFT JOIN users u_rental ON rr.user_id = u_rental.id
       LEFT JOIN borrow_requests br ON ii.current_borrow_id = br.request_id
       LEFT JOIN users u_borrow ON br.user_id = u_borrow.id
-      WHERE ii.is_active = TRUE
+      WHERE ${activeClause}
     `;
 
     const params = [];
@@ -56,7 +59,8 @@ router.get('/', authenticateToken, async (req, res) => {
       params.push(locationId);
     }
 
-    if (status) {
+    // If filtering for 'Archived' we already switched is_active; don't filter by ii.status = 'Archived'
+    if (status && status !== 'Archived') {
       query += ' AND ii.status = ?';
       params.push(status);
     }
@@ -80,6 +84,14 @@ router.get('/', authenticateToken, async (req, res) => {
     query += ' ORDER BY i.name, ii.serial_number';
 
     const [rows] = await pool.query(query, params);
+
+    // Debug: when requesting Archived items, log the activeClause and result count to help diagnose
+    if (status === 'Archived') {
+      try {
+        const ids = Array.isArray(rows) ? rows.map(r => r.item_id).slice(0, 40) : [];
+        console.log(`instrumentItems GET (status=Archived): activeClause=${activeClause}, returned=${rows.length}, sampleIds=${JSON.stringify(ids)}`);
+      } catch (e) { /* ignore logging errors */ }
+    }
 
     res.json({
       success: true,
@@ -315,7 +327,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     const { id } = req.params;
-    const {
+    let {
       serial_number,
       location_id,
       status,
@@ -326,6 +338,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
       photo_url,
       last_maintenance_date
     } = req.body;
+
+    // Accept legacy client value 'In Maintenance' and normalize to DB enum 'Under Maintenance'
+    try {
+      if (status === 'In Maintenance') status = 'Under Maintenance';
+    } catch (e) { /* ignore */ }
 
     // Get current state for audit
     const [current] = await pool.query('SELECT * FROM instrument_items WHERE item_id = ?', [id]);
@@ -366,12 +383,26 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     values.push(id);
+    // Dev logging: print the generated UPDATE statement and parameter values
+    try {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('InstrumentItems UPDATE SQL ->', `UPDATE instrument_items SET ${updates.join(', ')}, updated_at = NOW() WHERE item_id = ?`);
+        console.log('InstrumentItems UPDATE values ->', values);
+      }
+    } catch (logErr) { /* ignore logging errors */ }
+
     await pool.query(
       `UPDATE instrument_items SET ${updates.join(', ')}, updated_at = NOW() WHERE item_id = ?`,
       values
     );
 
     // Log to audit trail
+    try {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('InstrumentItems AUDIT ->', { id, userId, userEmail: req.user.email, before: current[0], after: req.body });
+      }
+    } catch (logErr) { /* ignore logging errors */ }
+
     await pool.query(`
       INSERT INTO audit_log (table_name, record_id, action, user_id, user_email, before_value, after_value)
       VALUES ('instrument_items', ?, 'UPDATE', ?, ?, ?, ?)
@@ -383,7 +414,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating instrument item:', error);
-    res.status(500).json({ success: false, message: 'Failed to update instrument item' });
+    const devMsg = process.env.NODE_ENV !== 'production' && error && error.message ? error.message : 'Failed to update instrument item';
+    res.status(500).json({ success: false, message: devMsg });
   }
 });
 
@@ -429,6 +461,62 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error deleting instrument item:', error);
     res.status(500).json({ success: false, message: 'Failed to delete instrument item' });
+  }
+});
+
+// Unarchive (restore) instrument item
+router.post('/:id/unarchive', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { id } = req.params;
+
+    // Get current state for audit
+    const [current] = await pool.query('SELECT * FROM instrument_items WHERE item_id = ?', [id]);
+    if (current.length === 0) {
+      return res.status(404).json({ success: false, message: 'Instrument item not found' });
+    }
+
+    if (current[0].is_active === 1 || current[0].is_active === true) {
+      return res.status(400).json({ success: false, message: 'Item is already active' });
+    }
+
+    // Debug: log the target being restored
+    try {
+      console.log(`instrumentItems UNARCHIVE: restoring item_id=${id}, currentActive=${current[0].is_active}`);
+    } catch (e) { /* ignore */ }
+
+    try {
+      await pool.query(
+        'UPDATE instrument_items SET is_active = TRUE, updated_at = NOW() WHERE item_id = ?',
+        [id]
+      );
+    } catch (dbErr) {
+      console.error('DB error restoring instrument item:', dbErr);
+      const devMsg = process.env.NODE_ENV !== 'production' && dbErr && dbErr.message ? dbErr.message : 'Failed to restore instrument item';
+      return res.status(500).json({ success: false, message: devMsg });
+    }
+
+    // Attempt to write audit log but don't fail the restore if audit insertion errors
+    try {
+      await pool.query(`
+        INSERT INTO audit_log (table_name, record_id, action, user_id, user_email, before_value)
+        VALUES ('instrument_items', ?, 'RESTORE', ?, ?, ?)
+      `, [id, userId, req.user.email, JSON.stringify(current[0])]);
+    } catch (auditErr) {
+      console.error('Warning: failed to write audit log for restore:', auditErr);
+    }
+
+    res.json({
+      success: true,
+      message: 'Instrument item restored successfully'
+    });
+  } catch (error) {
+    console.error('Error restoring instrument item:', error);
+    res.status(500).json({ success: false, message: 'Failed to restore instrument item' });
   }
 });
 

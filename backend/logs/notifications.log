@@ -913,3 +913,36 @@ RETURNED rows=1 id=6
 POST {"userEmail":"illmalicsi@addu.edu.ph","type":"success","title":"Payment Received","hasData":true,"time":"2025-11-16T12:35:26.719Z"}
 INSERTED id=7 time=2025-11-16T12:35:26.734Z
 RETURNED rows=1 id=7
+POST {"userEmail":"tyrianaven@gmail.com","type":"info","title":"Return Processed","hasData":true,"time":"2025-11-17T10:44:22.384Z"}
+INSERTED id=5 time=2025-11-17T10:44:22.397Z
+RETURNED rows=1 id=5
+POST {"userEmail":"admin@blueeagles.com","type":"info","title":"Rental Reschedule Request","hasData":true,"time":"2025-11-17T20:17:00.925Z"}
+POST {"userEmail":"admin@local","type":"info","title":"Rental Reschedule Request","hasData":true,"time":"2025-11-17T20:17:00.950Z"}
+INSERTED id=11 time=2025-11-17T20:17:00.998Z
+INSERTED id=10 time=2025-11-17T20:17:01.003Z
+RETURNED rows=1 id=11
+RETURNED rows=1 id=10
+POST {"userEmail":"tyrianaven@gmail.com","type":"success","title":"Payment Received","hasData":true,"time":"2025-11-17T23:46:43.283Z"}
+INSERTED id=7 time=2025-11-17T23:46:43.299Z
+RETURNED rows=1 id=7
+POST {"userEmail":"tyrianaven@gmail.com","type":"reminder","title":"Payment Reminder","hasData":true,"time":"2025-11-17T23:47:38.966Z"}
+INSERTED id=9 time=2025-11-17T23:47:38.973Z
+RETURNED rows=1 id=9
+POST {"userEmail":"tyrianaven@gmail.com","type":"success","title":"Payment Received","hasData":true,"time":"2025-11-17T23:57:00.891Z"}
+INSERTED id=10 time=2025-11-17T23:57:00.900Z
+RETURNED rows=1 id=10
+POST {"userEmail":"tyrianaven@gmail.com","type":"success","title":"Payment Received","hasData":true,"time":"2025-11-18T00:18:49.901Z"}
+INSERTED id=14 time=2025-11-18T00:18:49.922Z
+RETURNED rows=1 id=14
+POST {"userEmail":"tyrianaven@gmail.com","type":"info","title":"Booking Request Received","hasData":true,"time":"2025-11-18T00:32:51.037Z"}
+POST {"userEmail":"admin@local","type":"warning","title":"New Booking Request","hasData":true,"time":"2025-11-18T00:32:51.044Z"}
+POST {"userEmail":"admin@blueeagles.com","type":"warning","title":"New Booking Request","hasData":true,"time":"2025-11-18T00:32:51.051Z"}
+INSERTED id=17 time=2025-11-18T00:32:51.055Z
+INSERTED id=18 time=2025-11-18T00:32:51.057Z
+RETURNED rows=1 id=17
+RETURNED rows=1 id=18
+INSERTED id=19 time=2025-11-18T00:32:51.063Z
+RETURNED rows=1 id=19
+POST {"userEmail":"tyrianaven@gmail.com","type":"success","title":"Booking Confirmed!","hasData":true,"time":"2025-11-18T00:34:21.025Z"}
+INSERTED id=22 time=2025-11-18T00:34:21.032Z
+RETURNED rows=1 id=22

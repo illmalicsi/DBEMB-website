@@ -19,7 +19,7 @@ const InventoryReport = () => {
     const handler = () => {
       try { fetchData(); } catch (e) { console.warn('Failed to refresh inventory report on event', e); }
     };
-    const events = ['instrumentsUpdated', 'rentRequestsUpdated', 'borrowRequestsUpdated', 'notificationsUpdated'];
+    const events = ['instrumentsUpdated', 'rentRequestsUpdated', 'borrowRequestsUpdated', 'notificationsUpdated', 'instrumentItemsUpdated'];
     events.forEach(ev => window.addEventListener(ev, handler));
     return () => events.forEach(ev => window.removeEventListener(ev, handler));
   }, []);
@@ -50,7 +50,7 @@ const InventoryReport = () => {
     availableItems: items.filter(i => i.status === 'Available').length,
     rentedItems: items.filter(i => i.status === 'Rented').length,
     borrowedItems: items.filter(i => i.status === 'Borrowed').length,
-    maintenanceItems: items.filter(i => i.status === 'In Maintenance').length,
+    maintenanceItems: items.filter(i => i.status === 'Under Maintenance' || i.status === 'In Maintenance').length,
     excellentCondition: items.filter(i => i.condition_status === 'Excellent').length,
     goodCondition: items.filter(i => i.condition_status === 'Good').length,
     fairCondition: items.filter(i => i.condition_status === 'Fair').length,
@@ -71,7 +71,7 @@ const InventoryReport = () => {
       available: itemsForInst.filter(i => i.status === 'Available').length,
       rented: itemsForInst.filter(i => i.status === 'Rented').length,
       borrowed: itemsForInst.filter(i => i.status === 'Borrowed').length,
-      maintenance: itemsForInst.filter(i => i.status === 'In Maintenance').length,
+      maintenance: itemsForInst.filter(i => i.status === 'Under Maintenance' || i.status === 'In Maintenance').length,
       items: itemsForInst
     });
     return acc;
@@ -101,7 +101,7 @@ const InventoryReport = () => {
       available: itemsForInst.filter(i => i.status === 'Available').length,
       rented: itemsForInst.filter(i => i.status === 'Rented').length,
       borrowed: itemsForInst.filter(i => i.status === 'Borrowed').length,
-      maintenance: itemsForInst.filter(i => i.status === 'In Maintenance').length,
+      maintenance: itemsForInst.filter(i => i.status === 'Under Maintenance' || i.status === 'In Maintenance').length,
       items: itemsForInst
     });
     return acc;
@@ -173,32 +173,33 @@ const InventoryReport = () => {
   const styles = {
     container: {
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      padding: '40px',
+      padding: '16px',
       backgroundColor: '#f8fafc',
-      minHeight: '100vh'
+      minHeight: '100vh',
+      fontSize: '0.92rem'
     },
     header: {
-      marginBottom: '24px',
+      marginBottom: '12px',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center'
     },
     title: {
-      fontSize: '48px',
+      fontSize: '1.3rem',
       fontWeight: '900',
       color: '#0f172a',
-      margin: '0 0 12px 0',
-      letterSpacing: '-1px'
+      margin: '0 0 8px 0',
+      letterSpacing: '-0.5px'
     },
     subtitle: {
-      fontSize: '18px',
+      fontSize: '1rem',
       color: '#475569',
       fontWeight: '500',
-      marginBottom: '32px'
+      marginBottom: '16px'
     },
     actionBar: {
       display: 'flex',
-      gap: '12px',
+      gap: '8px',
       justifyContent: 'flex-end',
       alignItems: 'center'
     },
@@ -206,14 +207,14 @@ const InventoryReport = () => {
       background: '#2563eb',
       color: '#ffffff',
       border: 'none',
-      padding: '12px 20px',
-      borderRadius: '8px',
-      fontSize: '14px',
+      padding: '6px 12px',
+      borderRadius: '6px',
+      fontSize: '0.95rem',
       fontWeight: '700',
       cursor: 'pointer',
       display: 'inline-flex',
       alignItems: 'center',
-      gap: '8px',
+      gap: '6px',
       transition: 'all 0.2s'
     },
     btnSecondary: {
@@ -228,26 +229,26 @@ const InventoryReport = () => {
       background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
       backdropFilter: 'blur(10px)',
       border: '1px solid rgba(255,255,255,0.2)',
-      padding: '28px',
-      borderRadius: '20px',
+      padding: '10px',
+      borderRadius: '10px',
       color: '#ffffff',
-      boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.13)',
       position: 'relative',
       overflow: 'hidden'
     },
     statIcon: {
-      fontSize: '36px',
-      marginBottom: '12px',
+      fontSize: '1.2rem',
+      marginBottom: '6px',
       opacity: '0.9'
     },
     statValue: {
-      fontSize: '36px',
+      fontSize: '1.2rem',
       fontWeight: '800',
-      marginBottom: '8px',
-      letterSpacing: '-1px'
+      marginBottom: '4px',
+      letterSpacing: '-0.5px'
     },
     statLabel: {
-      fontSize: '13px',
+      fontSize: '0.8rem',
       fontWeight: '600',
       opacity: '0.8',
       textTransform: 'uppercase',
@@ -256,99 +257,104 @@ const InventoryReport = () => {
     filterCard: {
       background: 'rgba(255,255,255,0.95)',
       backdropFilter: 'blur(10px)',
-      padding: '32px',
-      borderRadius: '24px',
-      marginBottom: '32px',
-      boxShadow: '0 8px 30px rgba(0,0,0,0.2)'
+      padding: '12px',
+      borderRadius: '10px',
+      marginBottom: '16px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
     },
     filterGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-      gap: '20px'
+      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+      gap: '10px'
     },
     filterGroup: {
       display: 'flex',
       flexDirection: 'column',
-      gap: '8px'
+      gap: '4px'
     },
     filterLabel: {
-      fontSize: '13px',
+      fontSize: '0.85rem',
       fontWeight: '700',
       color: '#475569',
       textTransform: 'uppercase',
       letterSpacing: '0.5px'
     },
     select: {
-      padding: '12px 16px',
-      borderRadius: '12px',
+      padding: '6px 10px',
+      borderRadius: '7px',
       border: '2px solid #e2e8f0',
-      fontSize: '14px',
+      fontSize: '0.95rem',
       fontFamily: 'inherit',
       backgroundColor: '#ffffff',
       color: '#0f172a',
       cursor: 'pointer',
       outline: 'none',
-      transition: 'all 0.2s'
+      transition: 'all 0.2s',
+      minWidth: '120px',
+      width: '100%',
+      boxSizing: 'border-box',
+      maxWidth: '220px',
     },
     sectionCard: {
       background: 'rgba(255,255,255,0.95)',
       backdropFilter: 'blur(10px)',
-      borderRadius: '24px',
-      padding: '32px',
-      marginBottom: '32px',
-      boxShadow: '0 8px 30px rgba(0,0,0,0.2)'
+      borderRadius: '10px',
+      padding: '12px',
+      marginBottom: '16px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
     },
     sectionTitle: {
-      fontSize: '24px',
+      fontSize: '1.1rem',
       fontWeight: '800',
       color: '#0f172a',
-      marginBottom: '24px',
+      marginBottom: '10px',
       display: 'flex',
       alignItems: 'center',
-      gap: '12px'
+      gap: '8px'
     },
     categorySection: {
-      marginBottom: '32px',
-      paddingBottom: '32px',
-      borderBottom: '2px solid #e2e8f0'
+      marginBottom: '14px',
+      paddingBottom: '14px',
+      borderBottom: '1px solid #e2e8f0'
     },
     categoryHeader: {
-      fontSize: '20px',
+      fontSize: '1rem',
       fontWeight: '700',
       color: '#1e293b',
-      marginBottom: '16px',
+      marginBottom: '8px',
       display: 'flex',
       alignItems: 'center',
-      gap: '10px',
-      padding: '16px',
+      gap: '6px',
+      padding: '7px',
       background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
-      borderRadius: '12px'
+      borderRadius: '7px'
     },
     instrumentRow: {
       display: 'grid',
       gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr',
-      gap: '16px',
-      padding: '16px',
+      gap: '6px',
+      padding: '7px',
       borderBottom: '1px solid #f1f5f9',
-      alignItems: 'center'
+      alignItems: 'center',
+      fontSize: '0.92rem'
     },
     instrumentName: {
-      fontSize: '15px',
+      fontSize: '0.95rem',
       fontWeight: '600',
       color: '#0f172a'
     },
     instrumentBrand: {
-      fontSize: '13px',
+      fontSize: '0.8rem',
       color: '#64748b',
-      marginTop: '4px'
+      marginTop: '2px'
     },
     countBadge: {
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '6px 12px',
-      borderRadius: '8px',
-      fontSize: '13px',
+      padding: '2px 7px',
+      borderRadius: '5px',
+      fontSize: '0.85rem',
       fontWeight: '700'
     },
     available: {
@@ -369,48 +375,48 @@ const InventoryReport = () => {
     },
     locationGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-      gap: '20px'
+      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+      gap: '10px'
     },
     locationCard: {
       background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-      padding: '24px',
-      borderRadius: '16px',
-      border: '2px solid #e2e8f0'
+      padding: '10px',
+      borderRadius: '7px',
+      border: '1px solid #e2e8f0'
     },
     locationName: {
-      fontSize: '18px',
+      fontSize: '1rem',
       fontWeight: '700',
       color: '#1e293b',
-      marginBottom: '12px',
+      marginBottom: '6px',
       display: 'flex',
       alignItems: 'center',
-      gap: '8px'
+      gap: '5px'
     },
     locationCount: {
-      fontSize: '32px',
+      fontSize: '1.2rem',
       fontWeight: '800',
       color: '#667eea',
-      marginBottom: '8px'
+      marginBottom: '4px'
     },
     locationLabel: {
-      fontSize: '12px',
+      fontSize: '0.7rem',
       color: '#64748b',
       textTransform: 'uppercase',
       letterSpacing: '0.5px'
     },
     emptyState: {
       textAlign: 'center',
-      padding: '60px 20px',
+      padding: '20px 8px',
       color: '#64748b'
     },
     emptyIcon: {
-      fontSize: '64px',
-      marginBottom: '16px',
+      fontSize: '2rem',
+      marginBottom: '6px',
       opacity: '0.3'
     },
     emptyText: {
-      fontSize: '18px',
+      fontSize: '1rem',
       fontWeight: '600'
     }
   };
@@ -449,27 +455,32 @@ const InventoryReport = () => {
           <FaFilter /> Filter Inventory
         </div>
         <div style={styles.filterGrid}>
-          <div style={styles.filterGroup}>
+          <div style={{ ...styles.filterGroup, background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
             <label style={styles.filterLabel}>Category</label>
+            <div style={{ marginTop: 6 }}>
               <StyledSelect style={styles.select} value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
                 <option value="">All Categories</option>
                 {Object.keys(categories).map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </StyledSelect>
+            </div>
           </div>
-          <div style={styles.filterGroup}>
+          <div style={{ ...styles.filterGroup, background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
             <label style={styles.filterLabel}>Status</label>
+            <div style={{ marginTop: 6 }}>
               <StyledSelect style={styles.select} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
                 <option value="">All Status</option>
                 <option value="Available">Available</option>
                 <option value="Rented">Rented</option>
                 <option value="Borrowed">Borrowed</option>
-                <option value="In Maintenance">In Maintenance</option>
+                <option value="Under Maintenance">In Maintenance</option>
               </StyledSelect>
+            </div>
           </div>
-          <div style={styles.filterGroup}>
+          <div style={{ ...styles.filterGroup, background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
             <label style={styles.filterLabel}>Condition</label>
+            <div style={{ marginTop: 6 }}>
               <StyledSelect style={styles.select} value={filterCondition} onChange={(e) => setFilterCondition(e.target.value)}>
                 <option value="">All Conditions</option>
                 <option value="Excellent">Excellent</option>
@@ -477,6 +488,7 @@ const InventoryReport = () => {
                 <option value="Fair">Fair</option>
                 <option value="Poor">Poor</option>
               </StyledSelect>
+            </div>
           </div>
         </div>
         {(filterCategory || filterStatus || filterCondition) && (

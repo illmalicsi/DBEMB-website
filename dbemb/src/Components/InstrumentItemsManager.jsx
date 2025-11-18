@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import AuthService from '../services/authService';
 import theme from '../theme';
-import { FaSearch, FaPlus, FaBox, FaEye, FaChevronDown } from '../icons/fa';
+import { FaSearch, FaPlus, FaBox, FaEye, FaChevronDown, FaEllipsisV, FaEdit, FaArchive } from '../icons/fa';
 
 const InstrumentItemsManager = ({ user, onBackToHome }) => {
   // State
@@ -11,12 +12,22 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addPrefill, setAddPrefill] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [viewItem, setViewItem] = useState(null);
   // viewDetails removed per UI simplification (Details view disabled)
   const [stats, setStats] = useState({});
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [portalPos, setPortalPos] = useState({ top: 0, left: 0 });
+  const wrapperRefs = React.useRef({});
+  const [portalMeta, setPortalMeta] = useState({ openLeft: false, openAbove: false });
   const [activeTab, setActiveTab] = useState('Snare Drums');
+  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [unarchiveTarget, setUnarchiveTarget] = useState(null);
+  // Square menu size (px). Adjust to taste.
+  const MENU_SIZE = 180;
+  // Gap between button and menu (px). Smaller value moves menu closer to the button.
+  const MENU_GAP = 6;
   
   // Filters
   const [filters, setFilters] = useState({
@@ -57,18 +68,50 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [openMenuId]);
 
+  // When user switches status filter to Archived, show the All tab
+  useEffect(() => {
+    if (filters.status === 'Archived') {
+      setActiveTab('All');
+    }
+  }, [filters.status]);
+
+  // Wrapper for AddEditModal save to avoid referencing handlers inline (prevents HMR timing issues)
+  const handleModalSave = (data) => {
+    try {
+      if (editingItem) {
+        if (typeof handleUpdateItem === 'function') {
+          handleUpdateItem(editingItem.item_id, data);
+          return;
+        }
+        // fallback: call API directly if helper missing
+        alert('Update handler not available');
+      } else {
+        handleAddItem(data);
+      }
+    } catch (err) {
+      console.error('handleModalSave error', err);
+    }
+  };
+
   const fetchInstrumentItems = async () => {
     setLoading(true);
     setError(null);
     try {
       const queryParams = new URLSearchParams();
-      if (filters.instrumentId) queryParams.append('instrumentId', filters.instrumentId);
-      if (filters.locationId) queryParams.append('locationId', filters.locationId);
-      if (filters.status) queryParams.append('status', filters.status);
-      if (filters.condition) queryParams.append('condition', filters.condition);
-      if (filters.search) queryParams.append('serialNumber', filters.search);
+      // If user requested Archived, ignore other filters and fetch all archived items
+      if (filters.status === 'Archived') {
+        queryParams.append('status', 'Archived');
+      } else {
+        if (filters.instrumentId) queryParams.append('instrumentId', filters.instrumentId);
+        if (filters.locationId) queryParams.append('locationId', filters.locationId);
+        if (filters.status) queryParams.append('status', filters.status);
+        if (filters.condition) queryParams.append('condition', filters.condition);
+        if (filters.search) queryParams.append('serialNumber', filters.search);
+      }
 
       const response = await AuthService.get(`/instrument-items?${queryParams.toString()}`);
+      console.log('fetchInstrumentItems: response ->', response);
+      console.log('fetchInstrumentItems: items count ->', (response.items || []).length);
       setInstrumentItems(response.items || []);
     } catch (err) {
       setError('Failed to fetch instrument items');
@@ -160,10 +203,9 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
   // Bulk add handler: try a single bulk POST, fallback to sequential adds
   const handleBulkAdd = async (items) => {
     try {
-      // Prepare items: if any item requires creating a custom instrument, create it first sequentially
       const prepared = [];
       for (const it of items) {
-        let copy = { ...it };
+        const copy = { ...it };
         if (!copy.instrument_id && copy.custom_instrument_name) {
           const newInstrument = {
             name: copy.custom_instrument_name,
@@ -172,27 +214,31 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
             brand: copy.brand || 'N/A',
             description: 'Custom instrument added via inventory'
           };
-          const resp = await AuthService.post('/instruments', newInstrument);
-          const created = resp && (resp.instrument_id || resp.instrumentId || resp.instrument_id);
-          if (created) {
-            copy.instrument_id = created;
-            delete copy.custom_instrument_name;
+          try {
+            const resp = await AuthService.post('/instruments', newInstrument);
+            const created = resp && (resp.instrument_id || resp.instrumentId || resp.id || resp.instrument_id);
+            if (created) {
+              copy.instrument_id = created;
+              delete copy.custom_instrument_name;
+            }
+          } catch (err) {
+            // create failed, continue without instrument id
+            console.warn('Failed to create custom instrument', err);
           }
         }
         prepared.push(copy);
       }
 
-      // Try bulk endpoint
       try {
         await AuthService.post('/instrument-items/bulk', { items: prepared });
       } catch (err) {
-        // Fallback: post sequentially
+        // fallback: post sequentially
         for (const p of prepared) {
           try { await AuthService.post('/instrument-items', p); } catch (e) { /* continue */ }
         }
       }
 
-      setShowAddModal(false);
+      // refresh lists
       fetchInstrumentItems();
       fetchInstruments();
       fetchStats();
@@ -201,26 +247,66 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
     }
   };
 
+  // Update an existing instrument item
   const handleUpdateItem = async (itemId, itemData) => {
     try {
-      await AuthService.put(`/instrument-items/${itemId}`, itemData);
+      let finalData = { ...itemData };
+
+      // If user selected 'Others' and provided a custom instrument name, create that instrument first
+      if (itemData.instrument_id === 'others' && itemData.custom_instrument_name) {
+        const newInstrument = {
+          name: itemData.custom_instrument_name,
+          category: itemData.category || 'Other',
+          subcategory: 'Custom',
+          brand: itemData.brand || 'N/A',
+          description: 'Custom instrument added via inventory'
+        };
+        const response = await AuthService.post('/instruments', newInstrument);
+        const createdId = response && (response.instrument_id || response.instrumentId || response.id);
+        if (createdId) {
+          finalData.instrument_id = createdId;
+          delete finalData.custom_instrument_name;
+        }
+      } else {
+        delete finalData.custom_instrument_name;
+      }
+
+      await AuthService.put(`/instrument-items/${itemId}`, finalData);
       setEditingItem(null);
       fetchInstrumentItems();
+      fetchInstruments();
       fetchStats();
     } catch (err) {
       alert('Failed to update item: ' + (err.message || 'Unknown error'));
     }
   };
 
-  const handleDeleteItem = async (itemId) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
-    
+  // Archive (soft-delete) an item by setting its `archived` flag
+  const handleArchiveItem = async (item) => {
     try {
-      await AuthService.delete(`/instrument-items/${itemId}`);
+      if (!item || !item.item_id) return;
+      // Backend uses DELETE (soft-delete -> is_active = FALSE) to archive items
+      await AuthService.delete(`/instrument-items/${item.item_id}`);
+      setOpenMenuId(null);
+      // refresh lists
       fetchInstrumentItems();
       fetchStats();
     } catch (err) {
-      alert('Failed to delete item: ' + (err.message || 'Unknown error'));
+      alert('Failed to archive item: ' + (err && err.message ? err.message : 'Unknown error'));
+    }
+  };
+
+  const handleUnarchiveItem = async (item) => {
+    try {
+      if (!item || !item.item_id) return;
+      // Call new backend route to restore the item
+      await AuthService.post(`/instrument-items/${item.item_id}/unarchive`);
+      setOpenMenuId(null);
+      // refresh lists
+      fetchInstrumentItems();
+      fetchStats();
+    } catch (err) {
+      alert('Failed to restore item: ' + (err && err.message ? err.message : 'Unknown error'));
     }
   };
 
@@ -230,7 +316,8 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
     const baseStyle = { ...styles.badge };
     if (status === 'Available') return { ...baseStyle, ...styles.statusAvailable };
     if (status === 'Rented') return { ...baseStyle, ...styles.statusRented };
-    if (status === 'In Maintenance') return { ...baseStyle, ...styles.statusMaintenance };
+    if (status === 'Under Maintenance' || status === 'In Maintenance') return { ...baseStyle, ...styles.statusMaintenance };
+    if (status === 'Archived') return { ...baseStyle, ...styles.statusArchived };
     return baseStyle;
   };
 
@@ -450,7 +537,7 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
       borderRadius: '16px',
       boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
       border: '1px solid #e2e8f0',
-      overflow: 'auto',
+      overflow: 'visible',
       width: '100%',
       maxWidth: '100vw',
       margin: '0',
@@ -476,6 +563,7 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
     },
     tableWrapper: {
       overflowX: 'auto',
+      overflowY: 'visible',
       width: '100%',
       minWidth: 0,
     },
@@ -546,6 +634,11 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
       color: '#991b1b',
       border: '2px solid #fca5a5'
     },
+    statusArchived: {
+      backgroundColor: '#f1f5f9',
+      color: '#475569',
+      border: '2px solid #e2e8f0'
+    },
     conditionExcellent: {
       backgroundColor: '#d1fae5',
       color: '#065f46',
@@ -583,18 +676,28 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
       border: '1px solid #e2e8f0',
       borderRadius: '12px',
       boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
-      minWidth: '180px',
+      width: `${MENU_SIZE}px`,
+      height: `${MENU_SIZE}px`,
       zIndex: 9999,
-      overflow: 'hidden'
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-around',
+      alignItems: 'flex-start',
+      padding: '8px'
     },
     actionMenuItem: {
-      padding: '14px 20px',
+      padding: '8px 12px',
       cursor: 'pointer',
-      fontSize: '14px',
+      fontSize: '13px',
       color: '#0f172a',
-      borderBottom: '1px solid #f1f5f9',
-      transition: 'background-color 0.2s',
-      fontWeight: '600'
+      borderBottom: '1px solid rgba(241,245,249,0.6)',
+      transition: 'background-color 0.12s',
+      fontWeight: '600',
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
     },
     selectIcon: {
       position: 'absolute',
@@ -624,7 +727,7 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
       width: '90%',
       maxWidth: '700px',
       maxHeight: '90vh',
-      overflow: 'auto',
+      overflow: 'visible',
       boxShadow: '0 30px 60px rgba(0,0,0,0.3)'
     },
     modalHeader: {
@@ -728,7 +831,7 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
       borderRadius: '12px',
       padding: '12px',
       boxShadow: '0 6px 18px rgba(15, 23, 42, 0.04)',
-      overflow: 'hidden'
+      overflow: 'visible'
     },
     categoryHeader: {
       display: 'flex',
@@ -780,31 +883,200 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
   const formattedTotal = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(stats.total_value) || 0);
 
   // Group instrument items into the user's requested tabs (Snare, Bass, Percussion, Woodwind & Brass)
-  const groupedByCategory = instrumentItems.reduce((acc, item) => {
-    const inst = instruments.find(i => String(i.instrument_id) === String(item.instrument_id));
-    const rawCat = (inst && (inst.category || '')) || item.category || item.instrument_category || '';
-    const rawSub = (inst && (inst.subcategory || '')) || item.subcategory || item.instrument_subcategory || '';
-    const catLower = (rawCat || '').toString().toLowerCase();
-    const subLower = (rawSub || '').toString().toLowerCase();
+  let groupedByCategory = {};
+  if (filters.status === 'Archived') {
+    // When viewing Archived items, show them in a single 'All' group so the tab selection doesn't hide results.
+    groupedByCategory = { All: instrumentItems.slice() };
+  } else {
+    groupedByCategory = instrumentItems.reduce((acc, item) => {
+      const inst = instruments.find(i => String(i.instrument_id) === String(item.instrument_id));
+      const rawCat = (inst && (inst.category || '')) || item.category || item.instrument_category || '';
+      const rawSub = (inst && (inst.subcategory || '')) || item.subcategory || item.instrument_subcategory || '';
+      const catLower = (rawCat || '').toString().toLowerCase();
+      const subLower = (rawSub || '').toString().toLowerCase();
 
-    // Map into the simplified tabs requested by user.
-    // Priority: explicit subcategory keywords (snare/bass), then percussion, then wood/brass combined.
-    let key = 'Other';
-    if (subLower.includes('snare')) key = 'Snare Drums';
-    else if (subLower.includes('bass')) key = 'Bass Drums';
-    else if (catLower.includes('percussion')) key = 'Percussion';
-    else if (catLower.includes('wood') || catLower.includes('woodwind') || catLower.includes('brass')) key = 'Woodwind & Brass';
+      // Map into the simplified tabs requested by user.
+      // Priority: explicit subcategory keywords (snare/bass), then percussion, then wood/brass combined.
+      let key = 'Other';
+      if (subLower.includes('snare')) key = 'Snare Drums';
+      else if (subLower.includes('bass')) key = 'Bass Drums';
+      else if (catLower.includes('percussion')) key = 'Percussion';
+      else if (catLower.includes('wood') || catLower.includes('woodwind') || catLower.includes('brass')) key = 'Woodwind & Brass';
 
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(item);
-    return acc;
-  }, {});
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    }, {});
+  }
 
   // Preferred tab order as requested by the user
   const preferred = ['Snare Drums', 'Bass Drums', 'Percussion', 'Woodwind & Brass'];
   // Ensure we include preferred tabs even when empty
   const otherKeys = Object.keys(groupedByCategory).filter(k => !preferred.includes(k)).sort();
-  const categoryKeys = [...preferred, ...otherKeys];
+  let categoryKeys = [...preferred, ...otherKeys];
+
+  // If viewing archived items, show only the 'All' group
+  if (filters.status === 'Archived') {
+    categoryKeys = ['All'];
+  }
+
+  // Prepare portal-rendered actions menu (computed outside JSX to avoid parser issues)
+  const portalMenu = (() => {
+    if (!openMenuId) return null;
+    const current = instrumentItems.find(i => String(i.item_id) === String(openMenuId));
+    if (!current) return null;
+    const menu = (
+      <div id="instrument-items-action-menu" style={{ ...styles.actionMenu, position: 'fixed', top: portalPos.top, left: portalPos.left, zIndex: 20000 }} onClick={(e) => e.stopPropagation()}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => { setViewItem(current); setOpenMenuId(null); }}
+          style={{ ...styles.actionMenuItem, display: 'flex', gap: '8px', alignItems: 'center' }}
+        >
+          <FaEye size={14} color="#4c51bf" />
+          <span>View</span>
+        </div>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => { setEditingItem(current); setOpenMenuId(null); }}
+          style={{ ...styles.actionMenuItem, display: 'flex', gap: '8px', alignItems: 'center' }}
+        >
+          <FaEdit size={14} color="#0f172a" />
+          <span>Edit</span>
+        </div>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            // Open Add modal prefilled as a replacement for this item
+            const pre = {
+              category: current.category || current.instrument_category || undefined,
+              instrument_id: current.instrument_id || undefined,
+              location_id: current.location_id ? String(current.location_id) : undefined,
+              notes: `Replacement for item ${current.item_id} (serial ${current.serial_number || 'unknown'})`
+            };
+            setAddPrefill(pre);
+            setShowAddModal(true);
+            setOpenMenuId(null);
+          }}
+          style={{ ...styles.actionMenuItem, display: 'flex', gap: '8px', alignItems: 'center' }}
+        >
+          <FaPlus size={14} color="#0f9d58" />
+          <span>Create Replacement</span>
+        </div>
+        {((current.is_active === 0 || current.is_active === false)) ? (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => { setUnarchiveTarget(current); setOpenMenuId(null); }}
+            style={{ ...styles.actionMenuItem, display: 'flex', gap: '8px', alignItems: 'center' }}
+          >
+            <FaArchive size={14} color="#065f46" />
+            <span>Unarchive</span>
+          </div>
+        ) : (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => { setArchiveTarget(current); setOpenMenuId(null); }}
+            style={{ ...styles.actionMenuItem, display: 'flex', gap: '8px', alignItems: 'center' }}
+          >
+            <FaArchive size={14} color="#92400e" />
+            <span>Archived</span>
+          </div>
+        )}
+        {/* arrow pointer */}
+        {portalMeta && (
+          <div
+            style={{
+              position: 'absolute',
+              width: 0,
+              height: 0,
+              borderLeft: '8px solid transparent',
+              borderRight: '8px solid transparent',
+              borderTop: portalMeta.openAbove ? 'none' : '8px solid rgba(15,23,42,0.06)',
+              borderBottom: portalMeta.openAbove ? '8px solid rgba(15,23,42,0.06)' : 'none',
+              left: portalPos.anchorX ? Math.max(MENU_GAP, Math.min(portalPos.anchorX - portalPos.left - MENU_GAP, (MENU_SIZE - (MENU_GAP * 2)))) : (MENU_GAP * 2),
+              top: portalMeta.openAbove ? 'auto' : -MENU_GAP,
+              bottom: portalMeta.openAbove ? -MENU_GAP : 'auto',
+              pointerEvents: 'none'
+            }}
+          />
+        )}
+      </div>
+    );
+
+    try { return createPortal(menu, document.body); } catch (err) { return menu; }
+  })();
+
+  // Recompute portal position when scrolling or resizing so the fixed menu follows the button
+  useEffect(() => {
+    if (!openMenuId) return;
+    const updatePos = () => {
+      try {
+        const el = wrapperRefs.current[openMenuId];
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const menuWidth = MENU_SIZE;
+        const estimatedMenuHeight = MENU_SIZE; // menu is square
+        const vw = document.documentElement.clientWidth;
+        const vh = document.documentElement.clientHeight;
+        const spaceRight = vw - rect.right;
+        const spaceLeft = rect.left;
+
+        // prefer opening to the left if there's room (avoid overlapping card)
+        const openLeft = spaceLeft >= (menuWidth + MENU_GAP);
+        let left;
+        if (openLeft) {
+          left = Math.max(MENU_GAP, rect.left - menuWidth - MENU_GAP);
+        } else {
+          const leftRaw = rect.right - menuWidth + MENU_GAP;
+          left = Math.max(MENU_GAP, Math.min(leftRaw, vw - menuWidth - MENU_GAP));
+        }
+
+        // prefer opening below; flip above if not enough space below
+        const spaceBelow = vh - rect.bottom;
+        const spaceAbove = rect.top;
+        let openAbove = false;
+        if (spaceBelow < (estimatedMenuHeight + MENU_GAP) && spaceAbove >= (estimatedMenuHeight + MENU_GAP)) {
+          openAbove = true;
+        }
+
+        const top = openAbove ? (rect.top - estimatedMenuHeight - MENU_GAP) : (rect.bottom + MENU_GAP);
+        const anchorX = rect.left + rect.width / 2;
+
+        setPortalMeta({ openLeft, openAbove });
+        setPortalPos({ top, left, anchorX });
+
+        // After menu renders, measure its actual height and correct if needed
+        requestAnimationFrame(() => {
+          try {
+            const menuEl = document.getElementById('instrument-items-action-menu');
+            if (!menuEl) return;
+            const mh = menuEl.getBoundingClientRect().height;
+            // If measurement significantly differs from estimate, recompute top
+            if (Math.abs(mh - estimatedMenuHeight) > 8) {
+              const correctedOpenAbove = spaceBelow < (mh + 8) && spaceAbove >= (mh + 8);
+              const correctedTop = correctedOpenAbove ? (rect.top - mh - 8) : (rect.bottom + 8);
+              setPortalMeta({ openLeft, openAbove: correctedOpenAbove });
+              setPortalPos({ top: correctedTop, left, anchorX });
+            }
+          } catch (err) { /* ignore */ }
+        });
+
+      } catch (e) { /* ignore */ }
+    };
+
+    window.addEventListener('scroll', updatePos, true);
+    window.addEventListener('resize', updatePos);
+    // keep position in sync immediately
+    updatePos();
+    return () => {
+      window.removeEventListener('scroll', updatePos, true);
+      window.removeEventListener('resize', updatePos);
+    };
+  }, [openMenuId]);
 
   return (
     <div style={styles.container}>
@@ -935,7 +1207,9 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
                <option value="">All status</option>
                <option value="Available">Available</option>
                <option value="Rented">Rented</option>
-               <option value="In Maintenance">In Maintenance</option>
+               <option value="Borrowed">Borrowed</option>
+               <option value="Under Maintenance">In Maintenance</option>
+                 <option value="Archived">Archived</option>
               </select>
               <FaChevronDown style={styles.selectIcon} />
             </div>
@@ -1040,28 +1314,90 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
                               <td style={{ ...styles.td, whiteSpace: 'normal', wordBreak: 'break-word' }}>{item.instrument_name}</td>
                               <td style={{ ...styles.td, whiteSpace: 'normal', wordBreak: 'break-word' }}>{item.location_name || 'N/A'}</td>
                               <td style={{ ...styles.td }}>{item.acquisition_date ? (new Date(item.acquisition_date)).toLocaleDateString() : '—'}</td>
-                              <td style={{ ...styles.td, textAlign: 'center' }}><span style={getStatusStyle(item.status)}>{item.status}</span></td>
+                              {
+                                (() => {
+                                  const displayStatus = (item.is_active === 0 || item.is_active === false) ? 'Archived' : (item.status || '—');
+                                  return (
+                                    <td style={{ ...styles.td, textAlign: 'center' }}><span style={getStatusStyle(displayStatus)}>{displayStatus}</span></td>
+                                  );
+                                })()
+                              }
                               <td style={{ ...styles.td, textAlign: 'center' }}>
-                                <div style={{ display: 'inline-flex', justifyContent: 'center', gap: '8px', alignItems: 'center' }}>
+                                <div style={{ position: 'relative', display: 'inline-flex', justifyContent: 'center', gap: '8px', alignItems: 'center', overflow: 'visible' }} onClick={(e) => e.stopPropagation()}>
                                   <button
-                                    onClick={() => setViewItem(item)}
-                                    title="View"
-                                    aria-label="View item"
+                                    ref={el => wrapperRefs.current[item.item_id] = el}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const id = item.item_id;
+                                      if (openMenuId === id) {
+                                        setOpenMenuId(null);
+                                        return;
+                                      }
+                                      // compute portal coordinates relative to viewport (fixed positioning)
+                                      try {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const menuWidth = MENU_SIZE; // approximate menu width
+                                        const menuHeight = MENU_SIZE; // estimated menu height for flipping (square)
+                                        const vw = document.documentElement.clientWidth;
+                                        const vh = document.documentElement.clientHeight;
+                                        const spaceRight = vw - rect.right;
+                                        const spaceLeft = rect.left;
+                                        const spaceBelow = vh - rect.bottom;
+                                        const spaceAbove = rect.top;
+                                        let left;
+                                        let openLeft = false;
+                                        // prefer opening to the left when there's room
+                                        if (spaceLeft >= menuWidth + MENU_GAP) {
+                                          left = Math.max(MENU_GAP, rect.left - menuWidth - MENU_GAP);
+                                          openLeft = true;
+                                        } else {
+                                          const leftRaw = rect.right - menuWidth + MENU_GAP;
+                                          left = Math.max(MENU_GAP, Math.min(leftRaw, vw - menuWidth - MENU_GAP));
+                                          openLeft = false;
+                                        }
+                                        // decide above/below
+                                        let top;
+                                        let openAbove = false;
+                                        if (spaceBelow >= menuHeight + MENU_GAP) {
+                                          top = rect.bottom + MENU_GAP;
+                                          openAbove = false;
+                                        } else if (spaceAbove >= menuHeight + MENU_GAP) {
+                                          top = rect.top - menuHeight - MENU_GAP;
+                                          openAbove = true;
+                                        } else {
+                                          if (spaceBelow >= spaceAbove) {
+                                            top = Math.min(vh - menuHeight - MENU_GAP, rect.bottom + MENU_GAP);
+                                            openAbove = false;
+                                          } else {
+                                            top = Math.max(MENU_GAP, rect.top - menuHeight - MENU_GAP);
+                                            openAbove = true;
+                                          }
+                                        }
+                                        setPortalPos({ top, left, anchorX: rect.left + rect.width / 2 });
+                                        setPortalMeta({ openLeft, openAbove });
+                                      } catch (err) {
+                                        setPortalPos({ top: 8, left: 8 });
+                                        setPortalMeta({ openLeft: false, openAbove: false });
+                                      }
+                                      setOpenMenuId(id);
+                                    }}
+                                    title="Actions"
+                                    aria-label="Open actions menu"
                                     style={{
                                       ...styles.actionIcon,
                                       display: 'inline-flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
-                                      padding: '4px',
+                                      padding: '6px',
                                       borderRadius: '8px',
                                       border: '1px solid #e2e8f0',
                                       background: '#ffffff'
                                     }}
                                   >
-                                    <FaEye size={14} color="#4c51bf" style={{ verticalAlign: 'middle' }} />
+                                    <FaEllipsisV size={14} color="#475569" />
                                   </button>
 
-                                  {/* Delete button removed per request */}
+                                  {/* placeholder removed; button holds the ref now */}
                                 </div>
                               </td>
                             </tr>
@@ -1083,17 +1419,13 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
           item={editingItem}
           instruments={instruments}
           locations={locations}
+          prefill={addPrefill}
           onClose={() => {
             setShowAddModal(false);
             setEditingItem(null);
+            setAddPrefill(null);
           }}
-          onSave={(data) => {
-            if (editingItem) {
-              handleUpdateItem(editingItem.item_id, data);
-            } else {
-              handleAddItem(data);
-            }
-          }}
+          onSave={handleModalSave}
           onBulkSave={(items) => handleBulkAdd(items)}
           styles={styles}
         />
@@ -1105,12 +1437,48 @@ const InstrumentItemsManager = ({ user, onBackToHome }) => {
           styles={styles}
         />
       )}
+      {/* Archive confirmation modal */}
+      {archiveTarget && (
+        <div style={styles.modalOverlay} onClick={() => setArchiveTarget(null)}>
+          <div style={{ ...styles.modal, width: '420px', maxWidth: '92%', padding: '12px', borderRadius: '8px', boxShadow: '0 8px 20px rgba(2,6,23,0.08)', border: '1px solid rgba(15,23,42,0.06)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '8px 10px', borderRadius: '6px', background: 'transparent' }}>
+              <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Archive Item</h4>
+              <button style={{ ...styles.closeButton, width: '34px', height: '34px', fontSize: '20px' }} onClick={() => setArchiveTarget(null)} aria-label="Close">×</button>
+            </div>
+            <div style={{ padding: '6px 6px 12px 6px' }}>
+              <p style={{ margin: 0, color: '#0f172a', fontSize: '13px' }}>Move this item to Archived?</p>
+              <div style={{ marginTop: '14px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setArchiveTarget(null)} style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '13px' }}>Cancel</button>
+                <button onClick={async () => { await handleArchiveItem(archiveTarget); setArchiveTarget(null); }} style={{ padding: '7px 12px', borderRadius: '8px', border: 'none', background: '#dc2626', color: '#fff', fontSize: '13px' }}>Archive</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {unarchiveTarget && (
+        <div style={styles.modalOverlay} onClick={() => setUnarchiveTarget(null)}>
+          <div style={{ ...styles.modal, width: '420px', maxWidth: '92%', padding: '12px', borderRadius: '8px', boxShadow: '0 8px 20px rgba(2,6,23,0.08)', border: '1px solid rgba(15,23,42,0.06)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '8px 10px', borderRadius: '6px', background: 'transparent' }}>
+              <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Restore Item</h4>
+              <button style={{ ...styles.closeButton, width: '34px', height: '34px', fontSize: '20px' }} onClick={() => setUnarchiveTarget(null)} aria-label="Close">×</button>
+            </div>
+            <div style={{ padding: '6px 6px 12px 6px' }}>
+              <p style={{ margin: 0, color: '#0f172a', fontSize: '13px' }}>Restore this item to Active inventory?</p>
+              <div style={{ marginTop: '14px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setUnarchiveTarget(null)} style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '13px' }}>Cancel</button>
+                <button onClick={async () => { await handleUnarchiveItem(unarchiveTarget); setUnarchiveTarget(null); }} style={{ padding: '7px 12px', borderRadius: '8px', border: 'none', background: '#059669', color: '#fff', fontSize: '13px' }}>Restore</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {portalMenu}
     </div>
   );
 };
 
 // Add/Edit Modal Component
-const AddEditModal = ({ item, instruments, locations, onClose, onSave, onBulkSave, styles }) => {
+const AddEditModal = ({ item, instruments, locations, prefill, onClose, onSave, onBulkSave, styles }) => {
   // derive category list from instruments prop
   const categories = React.useMemo(() => {
     try {
@@ -1124,7 +1492,7 @@ const AddEditModal = ({ item, instruments, locations, onClose, onSave, onBulkSav
     instrument_id: item?.instrument_id || '',
     serial_number: item?.serial_number || '',
     location_id: item?.location_id || '',
-    status: item?.status || 'Available',
+    status: (item && (item.status === 'In Maintenance' ? 'Under Maintenance' : item.status)) || 'Available',
     condition_status: item?.condition_status || 'Good',
     purchase_cost: item?.purchase_cost || '',
     acquisition_date: item?.acquisition_date ? new Date(item.acquisition_date).toISOString().slice(0,10) : new Date().toISOString().slice(0,10),
@@ -1135,6 +1503,15 @@ const AddEditModal = ({ item, instruments, locations, onClose, onSave, onBulkSav
     serials: [],
     custom_instrument_name: ''
   });
+
+  // Apply prefill when opening Add modal as a replacement
+  useEffect(() => {
+    if (!item && prefill) {
+      const norm = { ...prefill };
+      if (norm.status === 'In Maintenance') norm.status = 'Under Maintenance';
+      setFormData(prev => ({ ...prev, ...Object.fromEntries(Object.entries(norm).filter(([k,v]) => v !== undefined)) }));
+    }
+  }, [prefill, item]);
 
   // When category changes, clear instrument selection so user actively picks one
   useEffect(() => {
@@ -1193,7 +1570,7 @@ const AddEditModal = ({ item, instruments, locations, onClose, onSave, onBulkSav
         brand: formData.brand || undefined,
         serial_number: s,
         location_id: formData.location_id || null,
-        status: formData.status,
+        status: formData.status === 'In Maintenance' ? 'Under Maintenance' : formData.status,
         condition_status: formData.condition_status,
         purchase_cost: formData.purchase_cost || null,
         acquisition_date: formData.acquisition_date || null,
@@ -1239,10 +1616,10 @@ const AddEditModal = ({ item, instruments, locations, onClose, onSave, onBulkSav
   const localFormGrid = {
     display: 'grid',
     gridTemplateColumns: '1fr',
-    gap: '14px'
+    gap: '10px'
   };
 
-  const twoColRow = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' };
+  const twoColRow = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' };
 
   const labelSmall = { ...styles.label, fontSize: '12px', color: '#475569' };
 
@@ -1250,30 +1627,30 @@ const AddEditModal = ({ item, instruments, locations, onClose, onSave, onBulkSav
   const modalLocal = {
     modal: {
       backgroundColor: '#ffffff',
-      borderRadius: '14px',
+      borderRadius: '10px',
       width: '92%',
-      maxWidth: '680px',
-      boxShadow: '0 20px 40px rgba(12, 20, 40, 0.12)'
+      maxWidth: '560px',
+      boxShadow: '0 12px 28px rgba(12, 20, 40, 0.08)'
     },
     modalHeader: {
-      padding: '18px 22px',
+      padding: '10px 14px',
       display: 'flex',
       alignItems: 'center',
-      gap: '12px',
-      background: 'linear-gradient(90deg, rgba(102,126,234,0.12), rgba(118,75,162,0.08))',
-      borderTopLeftRadius: '14px',
-      borderTopRightRadius: '14px'
+      gap: '10px',
+      background: 'linear-gradient(90deg, rgba(102,126,234,0.08), rgba(118,75,162,0.04))',
+      borderTopLeftRadius: '10px',
+      borderTopRightRadius: '10px'
     },
     modalTitle: {
-      fontSize: '18px',
-      fontWeight: '800',
+      fontSize: '16px',
+      fontWeight: '700',
       color: '#0f172a',
       margin: 0
     },
     headerIconWrap: {
-      width: '44px',
-      height: '44px',
-      borderRadius: '10px',
+      width: '36px',
+      height: '36px',
+      borderRadius: '8px',
       background: 'linear-gradient(135deg,#667eea,#764ba2)',
       display: 'flex',
       alignItems: 'center',
@@ -1282,40 +1659,40 @@ const AddEditModal = ({ item, instruments, locations, onClose, onSave, onBulkSav
       flexShrink: 0
     },
     modalBody: {
-      padding: '18px 20px'
+      padding: '10px 12px'
     },
     input: {
       ...styles.input,
-      padding: '8px 10px',
-      borderRadius: '10px',
+      padding: '6px 8px',
+      borderRadius: '8px',
       border: '1px solid #e6eefc'
     },
     select: {
       ...styles.select,
-      padding: '8px 10px',
-      borderRadius: '10px',
+      padding: '6px 8px',
+      borderRadius: '8px',
       border: '1px solid #e6eefc'
     },
     textarea: {
       ...styles.textarea,
-      padding: '10px 12px',
-      borderRadius: '10px',
+      padding: '8px 10px',
+      borderRadius: '8px',
       border: '1px solid #e6eefc'
     },
     modalFooter: {
-      padding: '14px 20px',
+      padding: '10px 12px',
       borderTop: '1px solid #f1f5f9',
       display: 'flex',
       justifyContent: 'flex-end',
-      gap: '10px',
+      gap: '8px',
       backgroundColor: '#ffffff',
-      borderBottomLeftRadius: '14px',
-      borderBottomRightRadius: '14px'
+      borderBottomLeftRadius: '10px',
+      borderBottomRightRadius: '10px'
     },
     primaryButton: {
       background: 'linear-gradient(90deg,#6d28d9,#4f46e5)',
       color: '#fff',
-      boxShadow: '0 8px 24px rgba(77, 46, 185, 0.18)'
+      boxShadow: '0 6px 18px rgba(77, 46, 185, 0.12)'
     }
   };
 
@@ -1434,14 +1811,16 @@ const AddEditModal = ({ item, instruments, locations, onClose, onSave, onBulkSav
                 </div>
               </div>
 
-              {/* Add-more bulk UI: user can add inline serial rows */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
-                <button type="button" className="btn btn-link" style={{ padding: 0, color: '#4f46e5', fontWeight: 700 }} onClick={() => {
-                  // enable bulk mode and initialize serials with current base serial
-                  setFormData(prev => ({ ...prev, bulkMode: true, serials: (prev.serials && prev.serials.length) ? prev.serials : [prev.serial_number || ''] }));
-                }}>+ Add more</button>
-                <div style={{ color: '#94a3b8', fontSize: '13px' }}>Add multiple items using inline serial rows (same acquisition date).</div>
-              </div>
+              {/* Add-more bulk UI: user can add inline serial rows - only when creating a new item */}
+              {!item && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+                  <button type="button" className="btn btn-link" style={{ padding: 0, color: '#4f46e5', fontWeight: 700 }} onClick={() => {
+                    // enable bulk mode and initialize serials with current base serial
+                    setFormData(prev => ({ ...prev, bulkMode: true, serials: (prev.serials && prev.serials.length) ? prev.serials : [prev.serial_number || ''] }));
+                  }}>+ Add more</button>
+                  <div style={{ color: '#94a3b8', fontSize: '13px' }}>Add multiple items using inline serial rows (same acquisition date).</div>
+                </div>
+              )}
 
               {formData.bulkMode && (
                 <div style={{ display: 'grid', gap: '8px', marginTop: '8px' }}>
@@ -1514,7 +1893,8 @@ const AddEditModal = ({ item, instruments, locations, onClose, onSave, onBulkSav
                     >
                       <option value="Available">Available</option>
                       <option value="Rented">Rented</option>
-                      <option value="In Maintenance">In Maintenance</option>
+                      <option value="Borrowed">Borrowed</option>
+                      <option value="Under Maintenance">In Maintenance</option>
                     </select>
                     <FaChevronDown style={styles.selectIcon} />
                   </div>
@@ -1566,7 +1946,7 @@ const AddEditModal = ({ item, instruments, locations, onClose, onSave, onBulkSav
               <div>
                 <div style={labelSmall}>Notes</div>
                 <textarea
-                  style={{ ...textareaStyle, marginTop: '6px', minHeight: '96px' }}
+                  style={{ ...textareaStyle, marginTop: '6px', minHeight: '120px', width: '100%', resize: 'vertical' }}
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Optional notes"
@@ -1576,12 +1956,24 @@ const AddEditModal = ({ item, instruments, locations, onClose, onSave, onBulkSav
           </div>
 
           <div style={{ ...styles.modalFooter, gap: '12px' }}>
-            <button type="button" style={styles.btnSecondary} onClick={onClose}>Cancel</button>
-            <button type="submit" style={styles.btnPrimary}>{item ? 'Update Item' : 'Add Item'}</button>
+            <button
+              type="button"
+              style={{ ...styles.btnSecondary, padding: '8px 12px', fontSize: '13px', borderRadius: '10px' }}
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              style={{ ...styles.btnPrimary, padding: '10px 16px', fontSize: '14px', borderRadius: '10px' }}
+            >
+              {item ? 'Update Item' : 'Add Item'}
+            </button>
           </div>
         </form>
       </div>
     </div>
+
   );
 };
 
@@ -1600,7 +1992,7 @@ const ViewModal = ({ item, onClose, styles }) => {
     const baseStyle = { ...styles.badge };
     if (status === 'Available') return { ...baseStyle, ...styles.statusAvailable };
     if (status === 'Rented') return { ...baseStyle, ...styles.statusRented };
-    if (status === 'In Maintenance') return { ...baseStyle, ...styles.statusMaintenance };
+    if (status === 'Under Maintenance' || status === 'In Maintenance') return { ...baseStyle, ...styles.statusMaintenance };
     return baseStyle;
   };
 
@@ -1613,62 +2005,40 @@ const ViewModal = ({ item, onClose, styles }) => {
     return baseStyle;
   };
 
+  const row = (label, value) => (
+    <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '12px', padding: '10px 0', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}>
+      <div style={{ color: '#475569', fontSize: '12px', background: 'rgba(99,102,241,0.06)', padding: '6px 8px', borderRadius: '6px', display: 'inline-block' }}>{label}</div>
+      <div style={{ color: '#0f172a', fontSize: '14px', fontWeight: 600 }}>{value}</div>
+    </div>
+  );
+
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.modalHeader}>
-          <h2 style={styles.modalTitle}>Item Details</h2>
-          <button style={styles.closeButton} onClick={onClose}>×</button>
-        </div>
-
-        <div style={styles.modalBody}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Serial</div>
-              <div style={{ fontSize: '16px', fontWeight: 800, marginTop: '6px' }}>{item.serial_number}</div>
+      <div style={{ ...styles.modal, width: '420px', maxWidth: '92%', padding: '10px', borderRadius: '8px', boxShadow: '0 10px 30px rgba(2,6,23,0.06)', border: '1px solid rgba(15,23,42,0.06)' }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', padding: '8px 8px', borderRadius: '6px', background: 'transparent' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaBox size={16} color="#6d28d9" />
+              <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Item Details</span>
             </div>
+            <button style={{ ...styles.closeButton, width: '34px', height: '34px', fontSize: '20px' }} onClick={onClose}>×</button>
+          </div>
 
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Instrument</div>
-              <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '6px' }}>{item.instrument_name || '—'}</div>
-            </div>
+          <div style={{ background: '#fff', borderRadius: '6px', padding: '6px 8px', borderLeft: '3px solid rgba(99,102,241,0.06)' }}>
+          {row('Serial', item.serial_number || '—')}
+          {row('Instrument', item.instrument_name || '—')}
+          {row('Location', item.location_name || '—')}
+          {row('Acquired', item.acquisition_date ? (new Date(item.acquisition_date)).toLocaleDateString() : '—')}
+          {row('Status', item.status || '—')}
+          {row('Condition', item.condition_status || '—')}
+          {row('Purchase', formatCurrency(item.purchase_cost))}
 
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Location</div>
-              <div style={{ fontSize: '14px', marginTop: '6px' }}>{item.location_name || '—'}</div>
-            </div>
+          <div style={{ padding: '10px 0', borderBottom: '1px solid #f1f5f9', background: 'rgba(99,102,241,0.02)', borderRadius: '6px' }}>
+            <div style={{ color: '#64748b', fontSize: '12px', marginBottom: '6px' }}>Notes</div>
+            <div style={{ fontSize: '14px', color: '#0f172a', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.notes || '—'}</div>
+          </div>
 
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Acquisition Date</div>
-              <div style={{ fontSize: '14px', marginTop: '6px' }}>{item.acquisition_date ? (new Date(item.acquisition_date)).toLocaleDateString() : '—'}</div>
-            </div>
-
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Status</div>
-              <div style={{ marginTop: '6px' }}><span style={getStatusStyleLocal(item.status)}>{item.status || '—'}</span></div>
-            </div>
-
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Condition</div>
-              <div style={{ marginTop: '6px' }}><span style={getConditionStyleLocal(item.condition_status)}>{item.condition_status || '—'}</span></div>
-            </div>
-
-            <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Notes</div>
-              <div style={{ fontSize: '14px', marginTop: '6px' }}>{item.notes || '—'}</div>
-            </div>
-
-            <div style={{ gridColumn: '1 / -1' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Purchase Cost</div>
-                  <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '6px' }}>{formatCurrency(item.purchase_cost)}</div>
-                </div>
-                <div>
-                  <button style={styles.btnSecondary} onClick={onClose}>Close</button>
-                </div>
-              </div>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '10px' }}>
+            <button style={styles.btnSecondary} onClick={onClose}>Close</button>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FaCalendarAlt, 
   FaChevronLeft, 
@@ -12,10 +12,17 @@ import {
   FaSearch,
   FaPlus,
   FaChevronDown,
-  FaSpinner
+  FaSpinner,
+  FaCheckCircle,
+  FaHourglassHalf,
+  FaTimesCircle,
+  FaTimes,
+  FaEllipsisV,
+  FaBars,
+  FaList,
+  FaCalendarDay
 } from 'react-icons/fa';
 import mysqlService from '../services/mysqlService';
-import StyledSelect from './StyledSelect';
 
 const BookingCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -23,10 +30,10 @@ const BookingCalendar = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('timeline'); // 'calendar' | 'timeline'
+  const [viewMode, setViewMode] = useState('calendar');
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-  const [hoveredBooking, setHoveredBooking] = useState(null);
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showSidebar, setShowSidebar] = useState(true);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -34,7 +41,6 @@ const BookingCalendar = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch bookings from API
   useEffect(() => {
     fetchBookings();
   }, []);
@@ -55,14 +61,10 @@ const BookingCalendar = () => {
       }
 
       const normalized = (list || []).map(b => {
-        // Prefer requested_* values when a reschedule request exists so the calendar
-        // reflects the requested/rescheduled date and time instead of the original.
-        const displayDate = b.requested_date || b.requestedDate || b.date || '';
-        const dateOnly = String(displayDate).split('T')[0];
-        const displayStart = b.requested_start || b.requestedStart || b.start_time || b.startTime || '';
-        const displayEnd = b.requested_end || b.requestedEnd || b.end_time || b.endTime || '';
+        const raw = b?.date || '';
+        const dateOnly = String(raw).split('T')[0];
         const customer_name = b.customer_name || [b.first_name, b.last_name].filter(Boolean).join(' ') || b.customerName || '';
-        return { ...b, date: dateOnly, start_time: displayStart, end_time: displayEnd, customer_name };
+        return { ...b, date: dateOnly, customer_name };
       });
 
       setBookings(normalized);
@@ -109,10 +111,10 @@ const BookingCalendar = () => {
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case 'approved': return '#0f9d58';
-      case 'pending': return '#f4b400';
-      case 'upcoming': return '#4285f4';
-      case 'rejected': return '#db4437';
+      case 'approved': return '#0b8043';
+      case 'pending': return '#f9ab00';
+      case 'upcoming': return '#1a73e8';
+      case 'rejected': return '#d93025';
       default: return '#5f6368';
     }
   };
@@ -125,29 +127,10 @@ const BookingCalendar = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
-  const formatDate = (date) => {
-    try {
-      if (typeof date === 'string') {
-        const parts = date.split('T')[0].split('-');
-        if (parts.length === 3) {
-          const d = new Date(parts[0], parseInt(parts[1], 10) - 1, parts[2]);
-          return d.toLocaleDateString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-          });
-        }
-      }
-      return new Date(date).toLocaleDateString('en-US', {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    } catch (e) {
-      return String(date);
-    }
+  const goToToday = () => {
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(today);
   };
 
   const formatTime = (time) => {
@@ -163,579 +146,808 @@ const BookingCalendar = () => {
     }
   };
 
-  const getServiceIcon = (service) => {
-    const serviceStr = service?.toLowerCase() || '';
-    if (serviceStr.includes('band')) return <FaMusic />;
-    if (serviceStr.includes('instrument')) return <FaGuitar />;
-    if (serviceStr.includes('rental')) return <FaCompactDisc />;
-    return <FaCalendarAlt />;
+  const formatDate = (dateStr) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return dateStr;
+    }
   };
 
-  const categorizeBookings = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() + 1);
-    const endOfWeek = new Date(today);
-    endOfWeek.setDate(today.getDate() + 7);
-
-    const past = [];
-    const current = [];
-    const upcoming = [];
-    const future = [];
-
-    bookings.forEach(b => {
-      const parts = String(b.date).split('T')[0].split('-');
-      if (parts.length !== 3) return;
-      const d = new Date(parts[0], parseInt(parts[1], 10) - 1, parts[2]);
-      d.setHours(0, 0, 0, 0);
-
-      const matchesSearch = !searchTerm || 
-        b.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.service?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.location?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = statusFilter === 'all' || b.status?.toLowerCase() === statusFilter.toLowerCase();
-      
-      if (!matchesSearch || !matchesStatus) return;
-
-      if (d < today) {
-        past.push(b);
-      } else if (d.getTime() === today.getTime()) {
-        current.push(b);
-      } else if (d >= startOfWeek && d <= endOfWeek) {
-        upcoming.push(b);
-      } else if (d > endOfWeek) {
-        future.push(b);
-      }
-    });
-
-    const sortByDateTime = (arr) => arr.sort((a, b) => {
-      if (a.date === b.date) return (a.start_time || '').localeCompare(b.start_time || '');
-      return a.date > b.date ? 1 : a.date < b.date ? -1 : 0;
-    });
-
-    return {
-      past: sortByDateTime(past),
-      current: sortByDateTime(current),
-      upcoming: sortByDateTime(upcoming),
-      future: sortByDateTime(future)
-    };
+  const getFilteredBookings = () => {
+    return bookings
+      .filter(b => {
+        const matchesSearch = !searchTerm || 
+          b.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          b.service?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || b.status?.toLowerCase() === statusFilter.toLowerCase();
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.start_time || '00:00'}`);
+        const dateB = new Date(`${b.date}T${b.start_time || '00:00'}`);
+        return dateB - dateA; // Most recent first
+      });
   };
 
   const days = getDaysInMonth(currentDate);
   const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const categorized = categorizeBookings();
 
-  return (
-    <div style={{
-      height: '100vh',
+  const styles = {
+    container: {
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      minHeight: '100vh',
+      background: '#f8f9fa',
       display: 'flex',
       flexDirection: 'column',
-      background: '#ffffff',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    }}>
-      {/* Header */}
-      <div style={{
-        borderBottom: '1px solid #dadce0',
-        padding: '8px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: '#fff',
-        minHeight: '64px',
-        flexWrap: 'wrap',
-        gap: '8px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              background: '#1a73e8',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              borderRadius: '8px'
-            }}>
-              <FaCalendarAlt size={18} />
-            </div>
-            <h1 style={{
-              fontSize: '22px',
-              fontWeight: '400',
-              color: '#202124',
-              margin: 0
-            }}>Calendar</h1>
-          </div>
-        </div>
+      padding: '16px',
+      boxSizing: 'border-box'
+    },
+    mainWrapper: {
+      background: '#fff',
+      borderRadius: '12px',
+      boxShadow: '0 1px 3px rgba(60,64,67,0.3)',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      flex: 1
+    },
+    header: {
+      height: '64px',
+      borderBottom: '1px solid #dadce0',
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 24px',
+      gap: '24px',
+      background: '#fff',
+      position: 'sticky',
+      top: 0,
+      zIndex: 100
+    },
+    logo: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      fontSize: '25px',
+      fontWeight: '700',
+      color: '#0f172a',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    },
+    searchBar: {
+      flex: 1,
+      maxWidth: '720px',
+      position: 'relative'
+    },
+    searchInput: {
+      width: '100%',
+      padding: '10px 48px 10px 16px',
+      border: '1px solid #dadce0',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontFamily: '"Google Sans", Roboto, Arial, sans-serif',
+      background: '#f1f3f4',
+      outline: 'none',
+      transition: 'all 0.2s'
+    },
+    searchIcon: {
+      position: 'absolute',
+      right: '16px',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      color: '#5f6368'
+    },
+    viewToggle: {
+      display: 'flex',
+      gap: '0', // Changed from '8px' to '0'
+      marginLeft: 'auto',
+      border: '1px solid #dadce0',
+      borderRadius: '8px', // Added border radius to container
+      overflow: 'hidden' // Added to ensure proper border radius
+    },
+    viewButton: {
+      background: 'transparent',
+      border: 'none', // Changed from '1px solid #dadce0'
+      borderRight: '1px solid #dadce0', // Add divider between buttons
+      padding: '8px 12px',
+      borderRadius: '0', // Changed from '4px'
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      fontSize: '14px',
+      color: '#3c4043',
+      transition: 'all 0.2s'
+    },
+    mainContent: {
+      display: 'flex',
+      flex: 1,
+      overflow: 'hidden'
+    },
+    sidebar: {
+      width: showSidebar ? '256px' : '0',
+      borderRight: showSidebar ? '1px solid #dadce0' : 'none',
+      padding: showSidebar ? '8px' : '0',
+      overflow: 'hidden',
+      transition: 'all 0.2s',
+      background: '#fff'
+    },
+    createButton: {
+      background: 'linear-gradient(135deg, #1e40af 0%, #06b6d4 100%)',
+      border: 'none',
+      color: 'white',
+      borderRadius: '24px',
+      padding: '12px 24px',
+      fontSize: '18px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '12px',
+      marginBottom: '16px',
+      width: '100%',
+      boxShadow: '0 8px 24px rgba(59, 130, 246, 0.3)',
+      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+      letterSpacing: '0.01em',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      position: 'relative',
+      overflow: 'hidden'
+    },
+    miniCalendar: {
+      padding: '8px',
+      marginBottom: '16px'
+    },
+    calendarHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: '16px',
+      padding: '8px 4px'
+    },
+    navButton: {
+      background: 'transparent',
+      border: 'none',
+      cursor: 'pointer',
+      padding: '8px',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#3c4043',
+      transition: 'background 0.2s'
+    },
+    monthYear: {
+      fontSize: '16px',
+      fontWeight: '600',
+      color: '#3c4043'
+    },
+    weekDays: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(7, 1fr)',
+      gap: '2px',
+      marginBottom: '4px'
+    },
+    weekDay: {
+      fontSize: '13px',
+      color: '#70757a',
+      textAlign: 'center',
+      padding: '6px',
+      fontWeight: '600'
+    },
+    miniCalendarGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(7, 1fr)',
+      gap: '2px'
+    },
+    miniCalendarDay: {
+      aspectRatio: '1',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '14px',
+      cursor: 'pointer',
+      borderRadius: '50%',
+      color: '#3c4043',
+      position: 'relative',
+      transition: 'background 0.2s',
+      fontWeight: '500'
+    },
+    calendarContainer: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    },
+    calendarToolbar: {
+      height: '60px',
+      borderBottom: '1px solid #dadce0',
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 16px',
+      gap: '16px',
+      background: '#fff'
+    },
+    todayButton: {
+      background: 'transparent',
+      border: '1px solid #dadce0',
+      borderRadius: '4px',
+      padding: '8px 16px',
+      fontSize: '14px',
+      color: '#3c4043',
+      cursor: 'pointer',
+      fontWeight: '500',
+      transition: 'all 0.2s'
+    },
+    calendarGrid: {
+      flex: 1,
+      display: 'grid',
+      gridTemplateColumns: 'repeat(7, 1fr)',
+      gridTemplateRows: 'auto repeat(6, 1fr)',
+      border: '1px solid #dadce0',
+      borderTop: 'none',
+      overflow: 'auto'
+    },
+    calendarHeaderCell: {
+      borderBottom: '1px solid #dadce0',
+      borderRight: '1px solid #dadce0',
+      padding: '10px',
+      fontSize: '14px',
+      fontWeight: '600',
+      textAlign: 'center',
+      textTransform: 'uppercase',
+      background: '#fff',
+      position: 'sticky',
+      top: 0,
+      zIndex: 10,
+      letterSpacing: '0.5px',
+      minWidth: '80px',
+      maxWidth: '180px',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    },
+    calendarDay: {
+      borderRight: '1px solid #dadce0',
+      borderBottom: '1px solid #dadce0',
+      padding: '4px',
+      background: '#fff',
+      position: 'relative',
+      minHeight: '120px',
+      overflow: 'hidden',
+      cursor: 'pointer',
+      transition: 'background 0.2s'
+    },
+    dayNumber: {
+      fontSize: '14px',
+      fontWeight: '500',
+      color: '#3c4043',
+      padding: '4px 8px',
+      width: 'fit-content',
+      margin: '2px'
+    },
+    eventItem: {
+      fontSize: '13px',
+      padding: '4px 8px',
+      marginBottom: '2px',
+      borderRadius: '4px',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+      cursor: 'pointer',
+      transition: 'all 0.2s',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      fontWeight: '500'
+    },
+    moreEvents: {
+      fontSize: '12px',
+      color: '#5f6368',
+      padding: '4px 8px',
+      cursor: 'pointer',
+      fontWeight: '600'
+    },
+    timelineContainer: {
+      flex: 1,
+      overflowY: 'auto',
+      padding: '24px',
+      background: '#f8f9fa'
+    },
+    timelineList: {
+      maxWidth: '1200px',
+      margin: '0 auto'
+    },
+    timelineItem: {
+      background: '#fff',
+      borderRadius: '8px',
+      padding: '20px',
+      marginBottom: '16px',
+      border: '1px solid #dadce0',
+      boxShadow: '0 1px 2px rgba(60,64,67,0.1)',
+      transition: 'all 0.2s',
+      cursor: 'pointer',
+      position: 'relative',
+      overflow: 'hidden'
+    },
+    timelineDate: {
+      fontSize: '14px',
+      fontWeight: '600',
+      color: '#5f6368',
+      marginBottom: '12px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
+    },
+    timelineContent: {
+      display: 'flex',
+      gap: '16px',
+      alignItems: 'flex-start'
+    },
+    timelineIcon: {
+      width: '48px',
+      height: '48px',
+      borderRadius: '8px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '20px',
+      flexShrink: 0
+    },
+    timelineDetails: {
+      flex: 1
+    },
+    timelineTitle: {
+      fontSize: '18px',
+      fontWeight: '600',
+      color: '#3c4043',
+      marginBottom: '8px'
+    },
+    timelineInfo: {
+      fontSize: '14px',
+      color: '#5f6368',
+      marginBottom: '4px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
+    },
+    timelineStatus: {
+      display: 'inline-block',
+      padding: '4px 12px',
+      borderRadius: '12px',
+      fontSize: '12px',
+      fontWeight: '600',
+      color: '#fff',
+      marginTop: '8px'
+    },
+    timelineBar: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: '4px'
+    }
+  };
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            border: '1px solid #dadce0',
-            padding: '0 8px',
-            height: '36px',
-            background: '#fff',
-            minWidth: '150px',
-            borderRadius: '6px'
-          }}>
-            <FaSearch size={14} color="#5f6368" />
+  return (
+    <div style={styles.container}>
+      <div style={styles.mainWrapper}>
+        {/* Header */}
+        <div style={styles.header}>
+          <button 
+            style={styles.navButton}
+            onClick={() => setShowSidebar(!showSidebar)}
+          >
+            <FaBars size={20} />
+          </button>
+          <div style={styles.logo}>
+            <span>Calendar</span>
+          </div>
+          <div style={styles.searchBar}>
             <input
+              style={styles.searchInput}
               type="text"
-              placeholder="Search bookings"
+              placeholder="Search for bookings"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                border: 'none',
-                outline: 'none',
-                padding: '0 8px',
-                fontSize: '14px',
-                width: '100%',
-                background: 'transparent'
+              onFocus={(e) => {
+                e.target.style.background = '#fff';
+                e.target.style.boxShadow = '0 1px 6px rgba(32,33,36,0.28)';
+              }}
+              onBlur={(e) => {
+                e.target.style.background = '#f1f3f4';
+                e.target.style.boxShadow = 'none';
               }}
             />
+            <FaSearch style={styles.searchIcon} size={16} />
           </div>
-
-          <div style={{ width: 170 }}>
-            <StyledSelect
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ height: '36px', fontSize: '14px', padding: '6px 10px' }}
-            >
-              <option value="all">All status</option>
-              <option value="approved">Approved</option>
-              <option value="pending">Pending</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="rejected">Rejected</option>
-            </StyledSelect>
-          </div>
-
-          {loading && (
-            <div style={{ fontSize: '12px', color: '#5f6368', paddingLeft: '8px' }}>
-              Loading bookings...
-            </div>
-          )}
-
-          <div style={{
-            display: 'flex',
-            border: '1px solid #dadce0',
-            height: '36px',
-            borderRadius: '6px',
-            overflow: 'hidden'
-          }}>
+          <div style={styles.viewToggle}>
             <button
-              onClick={() => setViewMode('calendar')}
               style={{
-                padding: '0 16px',
-                border: 'none',
-                background: viewMode === 'calendar' ? '#e8f0fe' : '#fff',
-                color: viewMode === 'calendar' ? '#1967d2' : '#5f6368',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                borderRight: '1px solid #dadce0'
+                ...styles.viewButton,
+                background: viewMode === 'calendar' ? '#e8f0fe' : 'transparent',
+                color: viewMode === 'calendar' ? '#1a73e8' : '#3c4043',
+                borderRadius: '7px 0 0 7px' // Left button rounded on left side
+              }}
+              onClick={() => setViewMode('calendar')}
+              onMouseEnter={(e) => {
+                if (viewMode !== 'calendar') e.currentTarget.style.background = '#f1f3f4';
+              }}
+              onMouseLeave={(e) => {
+                if (viewMode !== 'calendar') e.currentTarget.style.background = 'transparent';
               }}
             >
+              <FaCalendarDay size={16} />
               Calendar
             </button>
             <button
-              onClick={() => setViewMode('timeline')}
               style={{
-                padding: '0 16px',
-                border: 'none',
-                background: viewMode === 'timeline' ? '#e8f0fe' : '#fff',
-                color: viewMode === 'timeline' ? '#1967d2' : '#5f6368',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer'
+                ...styles.viewButton,
+                background: viewMode === 'timeline' ? '#e8f0fe' : 'transparent',
+                color: viewMode === 'timeline' ? '#1a73e8' : '#3c4043',
+                borderRight: 'none', // Remove border on last button
+                borderRadius: '0 7px 7px 0' // Right button rounded on right side
+              }}
+              onClick={() => setViewMode('timeline')}
+              onMouseEnter={(e) => {
+                if (viewMode !== 'timeline') e.currentTarget.style.background = '#f1f3f4';
+              }}
+              onMouseLeave={(e) => {
+                if (viewMode !== 'timeline') e.currentTarget.style.background = 'transparent';
               }}
             >
+              <FaList size={16} />
               Timeline
             </button>
           </div>
-
-          <button style={{
-            padding: '0 16px',
-            height: '36px',
-            background: '#1a73e8',
-            color: 'white',
-            border: 'none',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            borderRadius: '6px'
-          }}>
-            <FaPlus size={12} />
-            Create
-          </button>
         </div>
-      </div>
 
-      {/* Main Content */}
-      {viewMode === 'calendar' ? (
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', flexDirection: windowWidth < 768 ? 'column' : 'row' }}>
-          {/* Mini Calendar Sidebar */}
-          <div style={{
-            width: windowWidth < 768 ? '100%' : '256px',
-            borderRight: windowWidth < 768 ? 'none' : '1px solid #dadce0',
-            borderBottom: windowWidth < 768 ? '1px solid #dadce0' : 'none',
-            padding: '16px',
-            overflowY: 'auto'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '16px'
-            }}>
-              <button onClick={prevMonth} style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '8px'
-              }}>
-                <FaChevronLeft size={14} color="#5f6368" />
-              </button>
-              <span style={{ fontSize: '14px', fontWeight: '500', color: '#202124' }}>
-                {monthName}
-              </span>
-              <button onClick={nextMonth} style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '8px'
-              }}>
-                <FaChevronRight size={14} color="#5f6368" />
-              </button>
-            </div>
-
-            {/* Mini Calendar Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(7, 1fr)',
-              gap: '2px',
-              fontSize: '11px',
-              textAlign: 'center'
-            }}>
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
-                <div key={day} style={{ color: '#70757a', padding: '4px', fontWeight: '500' }}>
-                  {day}
-                </div>
-              ))}
-              {days.map((date, idx) => {
-                if (!date) return <div key={`empty-${idx}`} />;
-                const hasBooking = getBookingsForDate(date).length > 0;
-                const isToday = new Date().toDateString() === date.toDateString();
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: '4px',
-                      cursor: 'pointer',
-                      color: isToday ? '#1a73e8' : '#202124',
-                      fontWeight: isToday ? '700' : '400',
-                      background: isToday ? '#e8f0fe' : 'transparent',
-                      position: 'relative',
-                      borderRadius: '4px'
-                    }}
-                  >
-                    {date.getDate()}
-                    {hasBooking && (
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '2px',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: '4px',
-                        height: '4px',
-                        background: '#1a73e8',
-                        borderRadius: '50%'
-                      }} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Calendar View */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px', position: 'relative' }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(7, 1fr)',
-              gap: '1px',
-              background: '#dadce0',
-              border: '1px solid #dadce0'
-            }}>
-              {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
-                <div key={day} style={{
-                  background: '#fff',
-                  padding: '8px',
-                  fontSize: '11px',
-                  fontWeight: '500',
-                  color: '#70757a',
-                  textAlign: 'center',
-                  textTransform: 'uppercase'
-                }}>
-                  {day.slice(0, 3)}
-                </div>
-              ))}
-              
-              {days.map((date, idx) => {
-                if (!date) return <div key={`empty-${idx}`} style={{ background: '#f8f9fa', minHeight: '100px' }} />;
-                const dayBookings = getBookingsForDate(date);
-                const isToday = new Date().toDateString() === date.toDateString();
-                
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      background: '#fff',
-                      minHeight: '100px',
-                      padding: '4px',
-                      position: 'relative'
-                    }}
-                  >
-                    <div style={{
-                      fontSize: '12px',
-                      fontWeight: isToday ? '700' : '400',
-                      color: isToday ? '#1a73e8' : '#202124',
-                      marginBottom: '4px'
-                    }}>
-                      {date.getDate()}
-                    </div>
-                    {dayBookings.slice(0, 3).map((booking, i) => (
-                      <div
-                        key={i}
-                        onMouseEnter={(e) => { setHoveredBooking(booking); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
-                        onMouseMove={(e) => { setTooltipPos({ x: e.clientX, y: e.clientY }); }}
-                        onMouseLeave={() => setHoveredBooking(null)}
-                        style={{
-                          fontSize: '11px',
-                          padding: '2px 4px',
-                          marginBottom: '2px',
-                          background: getStatusColor(booking.status),
-                          color: 'white',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          borderRadius: '3px',
-                          cursor: 'default'
-                        }}
-                      >
-                        {booking.service}
-                      </div>
-                    ))}
-                    {dayBookings.length > 3 && (
-                      <div style={{ fontSize: '10px', color: '#5f6368', marginTop: '2px' }}>
-                        +{dayBookings.length - 3} more
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-                </div>
-            {/* Hover tooltip */}
-            {hoveredBooking && (
-              <div
-                style={{
-                  position: 'fixed',
-                  left: tooltipPos.x + 12,
-                  top: tooltipPos.y + 12,
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  padding: '10px 12px',
-                  boxShadow: '0 8px 24px rgba(16,24,40,0.12)',
-                  zIndex: 20000,
-                  minWidth: 240,
-                  maxWidth: 420,
-                  pointerEvents: 'none',
-                  fontSize: 13,
-                  color: '#111827'
-                }}
-              >
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>{hoveredBooking.service}</div>
-                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>{hoveredBooking.customer_name}</div>
-                <div style={{ display: 'flex', gap: 8, fontSize: 12, color: '#6b7280', marginBottom: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FaClock size={12} />{formatTime(hoveredBooking.start_time)} - {formatTime(hoveredBooking.end_time)}</div>
-                </div>
-                {hoveredBooking.location && (
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: '#6b7280' }}><FaMapMarkerAlt size={12} />{hoveredBooking.location}</div>
-                )}
-                {hoveredBooking.note && (
-                  <div style={{ marginTop: 8, fontSize: 12, color: '#374151' }}>{hoveredBooking.note}</div>
-                )}
+        <div style={styles.mainContent}>
+          {/* Sidebar */}
+          <div style={styles.sidebar}>
+            {/* Create button removed */}
+            {/* Mini Calendar */}
+            <div style={styles.miniCalendar}>
+              <div style={styles.calendarHeader}>
+                <button 
+                  style={styles.navButton}
+                  onClick={prevMonth}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f3f4'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <FaChevronLeft size={14} />
+                </button>
+                <span style={styles.monthYear}>{monthName}</span>
+                <button 
+                  style={styles.navButton}
+                  onClick={nextMonth}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f3f4'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <FaChevronRight size={14} />
+                </button>
               </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* Timeline View */
-        <div style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: windowWidth < 768 ? '12px' : '16px 24px',
-          background: '#f8f9fa'
-        }}>
-          <div style={{
-            maxWidth: '1400px',
-            margin: '0 auto',
-            display: 'grid',
-            gridTemplateColumns: windowWidth < 640 ? '1fr' : 
-                                 windowWidth < 1024 ? 'repeat(2, 1fr)' : 
-                                 'repeat(4, 1fr)',
-            gap: '16px'
-          }}>
-                          {[
-              { title: 'Past Bookings', data: categorized.past, color: '#5f6368' },
-              { title: 'Today', data: categorized.current, color: '#1a73e8' },
-              { title: 'This Week', data: categorized.upcoming, color: '#f4b400' },
-              { title: 'Future', data: categorized.future, color: '#0f9d58' }
-            ].map(section => (
-              <div key={section.title} style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #dadce0' }}>
-                <div style={{
-                  padding: '12px 16px',
-                  background: '#fff',
-                  borderBottom: '1px solid #dadce0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}>
-                  <h2 style={{
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#202124',
-                    margin: 0
-                  }}>
-                    {section.title}
-                  </h2>
-                  <span style={{
-                    fontSize: '12px',
-                    color: '#5f6368',
-                    background: '#f1f3f4',
-                    padding: '2px 8px',
-                    fontWeight: '500',
-                    borderRadius: '4px'
-                  }}>
-                    {section.data.length}
-                  </span>
-                </div>
-                
-                <div style={{
-                  background: '#fff',
-                  border: 'none',
-                  borderTop: 'none',
-                  minHeight: '400px',
-                  maxHeight: 'calc(100vh - 180px)',
-                  overflowY: 'auto'
-                }}>
-                  {section.data.length === 0 ? (
-                    <div style={{
-                      padding: '48px 16px',
-                      textAlign: 'center',
-                      color: '#5f6368',
-                      fontSize: '13px'
-                    }}>
-                      No bookings
+
+              <div style={styles.weekDays}>
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                  <div key={i} style={styles.weekDay}>{day}</div>
+                ))}
+              </div>
+
+              <div style={styles.miniCalendarGrid}>
+                {days.map((date, idx) => {
+                  if (!date) return <div key={`empty-${idx}`} />;
+                  const isToday = new Date().toDateString() === date.toDateString();
+                  const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+                  const hasBookings = getBookingsForDate(date).length > 0;
+                  
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        ...styles.miniCalendarDay,
+                        background: isSelected ? '#1a73e8' : isToday ? '#e8f0fe' : 'transparent',
+                        color: isSelected ? '#fff' : isToday ? '#1a73e8' : '#3c4043',
+                        fontWeight: isToday || isSelected ? '700' : '500'
+                      }}
+                      onClick={() => setSelectedDate(date)}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) e.currentTarget.style.background = '#f1f3f4';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) e.currentTarget.style.background = isToday ? '#e8f0fe' : 'transparent';
+                      }}
+                    >
+                      {date.getDate()}
+                      {hasBookings && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '2px',
+                          width: '4px',
+                          height: '4px',
+                          background: isSelected ? '#fff' : '#1a73e8',
+                          borderRadius: '50%'
+                        }} />
+                      )}
                     </div>
-                  ) : (
-                    section.data.map((booking, idx) => (
-                      <div
-                        key={idx}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Filter Section */}
+            <div style={{ padding: '8px', borderTop: '1px solid #dadce0' }}>
+              <div style={{ fontSize: '14px', fontWeight: '500', color: '#3c4043', marginBottom: '8px' }}>
+                My calendars
+              </div>
+              {['All', 'Approved', 'Pending', 'Upcoming', 'Rejected'].map(status => {
+                const count = status === 'All' 
+                  ? bookings.length 
+                  : bookings.filter(b => b.status?.toLowerCase() === status.toLowerCase()).length;
+                
+                return (
+                  <div
+                    key={status}
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: '14px',
+                      color: '#3c4043',
+                      cursor: 'pointer',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      background: statusFilter === status.toLowerCase() || (statusFilter === 'all' && status === 'All') ? '#e8f0fe' : 'transparent'
+                    }}
+                    onClick={() => setStatusFilter(status === 'All' ? 'all' : status.toLowerCase())}
+                    onMouseEnter={(e) => {
+                      if (statusFilter !== status.toLowerCase() && !(statusFilter === 'all' && status === 'All')) {
+                        e.currentTarget.style.background = '#f1f3f4';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (statusFilter !== status.toLowerCase() && !(statusFilter === 'all' && status === 'All')) {
+                        e.currentTarget.style.background = 'transparent';
+                      }
+                    }}
+                  >
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '2px',
+                      background: status === 'All' ? '#3c4043' : getStatusColor(status)
+                    }} />
+                    <span style={{ flex: 1 }}>{status}</span>
+                    <span style={{ fontSize: '12px', color: '#5f6368' }}>({count})</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Main Content - Calendar or Timeline */}
+          {viewMode === 'calendar' ? (
+            <div style={styles.calendarContainer}>
+              <div style={styles.calendarToolbar}>
+                <button 
+                  style={styles.todayButton}
+                  onClick={goToToday}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f3f4'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  Today
+                </button>
+                <button 
+                  style={styles.navButton}
+                  onClick={prevMonth}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f3f4'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <FaChevronLeft size={16} />
+                </button>
+                <button 
+                  style={styles.navButton}
+                  onClick={nextMonth}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f3f4'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <FaChevronRight size={16} />
+                </button>
+                <h2 style={{ fontSize: '22px', fontWeight: '400', color: '#3c4043', margin: 0 }}>
+                  {monthName}
+                </h2>
+              </div>
+
+              {/* Calendar Grid */}
+              <div style={styles.calendarGrid}>
+                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, i) => (
+                  <div 
+                    key={day} 
+                    style={{
+                      ...styles.calendarHeaderCell,
+                      backgroundColor: i === 0 || i === 6 ? '#ef4444' : '#3b82f6', // Red background for weekends, blue for weekdays
+                      color: '#ffffff', // White text color for all days
+                      borderRight: i === 6 ? 'none' : '1px solid #dadce0'
+                    }}
+                  >
+                    {day}
+                  </div>
+                ))}
+                
+                {days.map((date, idx) => {
+                  if (!date) return (
+                    <div 
+                      key={`empty-${idx}`} 
+                      style={{
+                        ...styles.calendarDay,
+                        background: '#fff', // Changed from '#f8f9fa' to '#fff'
+                        borderRight: (idx + 1) % 7 === 0 ? 'none' : '1px solid #dadce0'
+                      }} 
+                    />
+                  );
+                  
+                  const dayBookings = getBookingsForDate(date)
+                    .filter(b => {
+                      const matchesSearch = !searchTerm || 
+                        b.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        b.service?.toLowerCase().includes(searchTerm.toLowerCase());
+                      const matchesStatus = statusFilter === 'all' || b.status?.toLowerCase() === statusFilter.toLowerCase();
+                      return matchesSearch && matchesStatus;
+                    });
+                  
+                  const isToday = new Date().toDateString() === date.toDateString();
+                  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                  
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        ...styles.calendarDay,
+                        background: isWeekend ? '#fafafa' : '#fff',
+                        borderRight: (idx + 1) % 7 === 0 ? 'none' : '1px solid #dadce0'
+                      }}
+                      onClick={() => setSelectedDate(date)}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = isWeekend ? '#fafafa' : '#fff'}
+                    >
+                      <div 
                         style={{
-                          padding: '12px 16px',
-                          borderBottom: '1px solid #f1f3f4',
-                          cursor: 'pointer',
-                          background: '#fff'
+                          ...styles.dayNumber,
+                          background: isToday ? '#1a73e8' : 'transparent',
+                          color: isToday ? '#fff' : '#3c4043',
+                          borderRadius: isToday ? '50%' : '0',
+                          width: isToday ? '28px' : 'auto',
+                          height: isToday ? '28px' : 'auto',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: isToday ? '600' : '500'
                         }}
                       >
+                        {date.getDate()}
+                      </div>
+                      
+                      {dayBookings.slice(0, 3).map((booking, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            ...styles.eventItem,
+                            background: getStatusColor(booking.status),
+                            color: '#fff',
+                            borderLeft: `3px solid ${getStatusColor(booking.status)}`
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.opacity = '0.9';
+                            e.currentTarget.style.transform = 'translateX(2px)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = '1';
+                            e.currentTarget.style.transform = 'translateX(0)';
+                          }}
+                        >
+                          <FaClock size={11} />
+                          <span>{formatTime(booking.start_time)}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {booking.service}
+                          </span>
+                        </div>
+                      ))}
+                      
+                      {dayBookings.length > 3 && (
+                        <div 
+                          style={styles.moreEvents}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#1a73e8'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#5f6368'}
+                        >
+                          +{dayBookings.length - 3} more
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            /* Timeline View */
+            <div style={styles.timelineContainer}>
+              <div style={styles.timelineList}>
+                {getFilteredBookings().length === 0 ? (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '60px 20px',
+                    color: '#5f6368'
+                  }}>
+                    <FaCalendarAlt size={64} color="#dadce0" style={{ marginBottom: '20px' }} />
+                    <h3 style={{ fontSize: '20px', fontWeight: '400', marginBottom: '8px' }}>No bookings found</h3>
+                    <p style={{ fontSize: '14px' }}>Try adjusting your filters or search terms</p>
+                  </div>
+                ) : (
+                  getFilteredBookings().map((booking, idx) => (
+                    <div
+                      key={idx}
+                      style={styles.timelineItem}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(60,64,67,0.2)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(60,64,67,0.1)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <div style={{
+                        ...styles.timelineBar,
+                        background: getStatusColor(booking.status)
+                      }} />
+                      
+                      <div style={styles.timelineDate}>
+                        <FaCalendarAlt size={14} />
+                        {formatDate(booking.date)}
+                      </div>
+                      
+                      <div style={styles.timelineContent}>
                         <div style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '12px'
+                          ...styles.timelineIcon,
+                          background: `${getStatusColor(booking.status)}20`,
+                          color: getStatusColor(booking.status)
                         }}>
-                          <div style={{
-                            width: '4px',
-                            height: '48px',
-                            background: getStatusColor(booking.status),
-                            flexShrink: 0,
-                            borderRadius: '2px'
-                          }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{
-                              fontSize: '13px',
-                              fontWeight: '500',
-                              color: '#202124',
-                              marginBottom: '4px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {booking.service}
-                            </div>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#5f6368',
-                              marginBottom: '2px'
-                            }}>
-                              {booking.customer_name}
-                            </div>
-                            <div style={{
-                              fontSize: '11px',
-                              color: '#5f6368',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              marginBottom: '2px'
-                            }}>
-                              <FaClock size={10} />
-                              {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
-                            </div>
-                            {booking.location && (
-                              <div style={{
-                                fontSize: '11px',
-                                color: '#5f6368',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                              }}>
-                                <FaMapMarkerAlt size={10} />
-                                {booking.location}
-                              </div>
-                            )}
+                          <FaMusic />
+                        </div>
+                        
+                        <div style={styles.timelineDetails}>
+                          <div style={styles.timelineTitle}>
+                            {booking.service}
                           </div>
-                          <div style={{
-                            fontSize: '10px',
-                            padding: '2px 6px',
-                            background: getStatusColor(booking.status),
-                            color: 'white',
-                            fontWeight: '500',
-                            textTransform: 'uppercase',
-                            flexShrink: 0,
-                            borderRadius: '4px'
-                          }}>
-                            {booking.status}
+                          
+                          <div style={styles.timelineInfo}>
+                            <FaUser size={12} />
+                            {booking.customer_name}
                           </div>
+                          
+                          <div style={styles.timelineInfo}>
+                            <FaClock size={12} />
+                            {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                          </div>
+                          
+                          {booking.location && (
+                            <div style={styles.timelineInfo}>
+                              <FaMapMarkerAlt size={12} />
+                              {booking.location}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
+                    </div>
+                  ))
+                )}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

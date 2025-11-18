@@ -8,7 +8,6 @@
     FaEdit, 
     FaBan, 
     FaCheckCircle, 
-    FaTimes, 
     FaSearch, 
     FaFilter,
     FaEye,

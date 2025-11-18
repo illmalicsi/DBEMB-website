@@ -363,8 +363,6 @@ const Dashboard = ({ user, onBackToHome, onLogout }) => {
   { id: 'customers', icon: <FaUsers size={14} color="currentColor" />, text: 'Customers', view: 'customer-management', adminOnly: false },
   { id: 'booking-calendar', icon: <FaCalendarAlt size={14} color="currentColor" />, text: 'Booking Calendar', view: 'booking-calendar', adminOnly: false },
   { id: 'upcoming-schedule', icon: <FaHistory size={14} color="currentColor" />, text: 'Pending Bookings', view: 'upcoming-schedule', adminOnly: false },
-  { id: 'maintenance', icon: <FaTools size={14} color="currentColor" />, text: 'Maintenance', view: 'maintenance', adminOnly: true },
-  { id: 'performances', icon: <FaMusic size={14} color="currentColor" />, text: 'Performances', view: 'performance-history', adminOnly: false },
   { id: 'sales-report', icon: <FaChartLine size={14} color="currentColor" />, text: 'Sales Report', view: 'sales-report', adminOnly: true }
       ]
     },
@@ -1934,15 +1932,7 @@ const Dashboard = ({ user, onBackToHome, onLogout }) => {
           </Suspense>
         );
 
-      case 'performance-history':
-        return (
-          <div style={styles.panelContainer}>
-            <div style={styles.panelBody}>
-              {getComingSoonContent('Performance History', '🎭')}
-            </div>
-          </div>
-        );
-
+      
       case 'my-profile':
         return (
           <div style={styles.panelContainer}>

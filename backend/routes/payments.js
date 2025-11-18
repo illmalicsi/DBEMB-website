@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
 const billingService = require('../services/billingService');
+const { notifyAllAdmins } = require('../services/notificationService');
 const { authenticateToken } = require('../middleware/auth');
 
 // POST /api/payments - Simulated payment processing
@@ -45,6 +46,25 @@ router.post('/', authenticateToken, async (req, res) => {
       invoiceId = invoiceRows[0].invoice_id;
       console.log('📄 Invoice found:', invoiceId);
 
+      // Special handling: if customer selected cash payment in the test gateway,
+      // notify admins that the customer will pay in cash and do NOT process any payment.
+      if (paymentMethod && String(paymentMethod).toLowerCase().includes('cash')) {
+        try {
+          const requester = req.user && (req.user.email || req.user.id) ? (req.user.email || `User #${req.user.id}`) : 'A customer';
+          await notifyAllAdmins(
+            'payment_pending_cash',
+            'Customer requests cash payment',
+            `${requester} selected cash payment for booking ${bookingId}. The customer will pay in cash upon delivery/pickup.`,
+            { bookingId, invoiceId, amount, paymentMethod, requestedBy: req.user && req.user.id ? req.user.id : null }
+          );
+          console.log('ℹ️ Admins notified for cash payment request');
+        } catch (nErr) {
+          console.warn('Failed to notify admins for cash payment request:', nErr && nErr.message);
+        }
+
+        // Return early: do not process or record a payment; booking remains unpaid.
+        return res.json({ success: true, message: 'Cash payment requested; admins have been notified. No online payment recorded.' });
+      }
       // Delegate payment processing to billingService which centralizes
       // payment insertion and related updates (rent_requests, bookings,
       // instrument_items, transactions, notifications).

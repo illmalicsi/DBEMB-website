@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const billingService = require('../services/billingService');
 const { notifyAllAdmins, notifyUser } = require('../services/notificationService');
 
@@ -85,7 +85,9 @@ async function decrementInventory(conn, instrumentId, amount, locationId = null)
     // Use provided locationId, or find primary location for this instrument (if column exists)
     let locId = locationId;
     if (!locId && schema.primaryLocationExists) {
-      const [pRows] = await conn.query('SELECT primary_location_id FROM instruments WHERE instrument_id = ? FOR UPDATE', [instrumentId]);
+      const forUpdate = (conn && typeof conn.beginTransaction === 'function');
+      const sql = forUpdate ? 'SELECT primary_location_id FROM instruments WHERE instrument_id = ? FOR UPDATE' : 'SELECT primary_location_id FROM instruments WHERE instrument_id = ?';
+      const [pRows] = await conn.query(sql, [instrumentId]);
       locId = pRows && pRows[0] ? pRows[0].primary_location_id : null;
     }
     if (!locId) {
@@ -130,7 +132,9 @@ async function incrementInventory(conn, instrumentId, amount, locationId = null)
     // Use provided locationId, or auto-detect
     let locId = locationId;
     if (!locId && schema.primaryLocationExists) {
-      const [pRows] = await conn.query('SELECT primary_location_id FROM instruments WHERE instrument_id = ? FOR UPDATE', [instrumentId]);
+      const forUpdate = (conn && typeof conn.beginTransaction === 'function');
+      const sql = forUpdate ? 'SELECT primary_location_id FROM instruments WHERE instrument_id = ? FOR UPDATE' : 'SELECT primary_location_id FROM instruments WHERE instrument_id = ?';
+      const [pRows] = await conn.query(sql, [instrumentId]);
       locId = pRows && pRows[0] ? pRows[0].primary_location_id : null;
     }
     if (!locId) {
@@ -275,7 +279,22 @@ router.get('/my-requests', authenticateToken, async (req, res) => {
 // Create borrow request
 router.post('/borrow-request', authenticateToken, async (req, res) => {
   try {
-    const { instrumentId, instrumentName, instrumentType, quantity, startDate, endDate, purpose, notes } = req.body;
+    // DEBUG: Log minimal incoming payload and auth info to help trace why DB rows are not created
+    try {
+      console.log('DEBUG [POST /borrow-request] invoked', {
+        path: req.path,
+        userId: req.user && req.user.id,
+        userEmail: req.user && req.user.email,
+        payloadSummary: {
+          instrumentId: req.body && req.body.instrumentId,
+          instrumentName: req.body && req.body.instrumentName,
+          quantity: req.body && req.body.quantity,
+          startDate: req.body && req.body.startDate,
+          endDate: req.body && req.body.endDate
+        }
+      });
+    } catch (dbg) { console.warn('DEBUG log failed in borrow-request handler', dbg && dbg.message); }
+    let { instrumentId, instrumentName, instrumentType, quantity, startDate, endDate, purpose, notes } = req.body;
     const userId = req.user && req.user.id;
 
     // Guard: ensure we have an authenticated user id before attempting DB writes.
@@ -287,19 +306,18 @@ router.post('/borrow-request', authenticateToken, async (req, res) => {
     // START TRANSACTION - Reserve inventory immediately upon borrow request creation
     const conn = await pool.getConnection();
     try {
-      // Defensive: if an instrument with the same name already exists, return it and avoid duplicate-insert errors.
-      // NOTE: use the instrumentName field from the payload (was previously referencing an undefined `name` variable).
-      if (instrumentName) {
+      // If the client provided an instrumentName but not an instrumentId, try to
+      // resolve the name to an existing instrument_id so we can create a borrow
+      // request against the correct instrument. Do NOT return early here.
+      if (instrumentName && !instrumentId) {
         try {
           const [found] = await conn.query('SELECT instrument_id FROM instruments WHERE name = ? LIMIT 1', [String(instrumentName).trim()]);
           if (found && found.length) {
-            const existingId = found[0].instrument_id;
-            conn.release();
-            return res.status(200).json({ success: true, message: 'Instrument already exists', instrumentId: existingId, instrument_id: existingId });
+            instrumentId = found[0].instrument_id;
+            console.log('Resolved instrumentName to instrumentId', instrumentId);
           }
         } catch (lookupErr) {
-          // lookup failed for some reason; continue to attempt create (we'll handle dup errors below)
-          console.warn('Instrument existence lookup failed (continuing to create):', lookupErr && lookupErr.message);
+          console.warn('Instrument existence lookup failed (continuing):', lookupErr && lookupErr.message);
         }
       }
 
@@ -550,9 +568,13 @@ async function createRentRequestHandler(req, res) {
             return price ? `${qty}x ${name} (₱${Number(price)}/day)` : `${qty}x ${name}`;
           });
 
+          const itemsLabelPlain = items.map(i => i && (i.instrumentName || i.name || i.instrument_name) ? (i.instrumentName || i.name || i.instrument_name) : '').filter(Boolean);
+          const itemsLabelText = itemsLabelPlain.length === 0 ? itemLabels.join(', ') : (itemsLabelPlain.length === 1 ? itemsLabelPlain[0] : itemsLabelPlain.join(', '));
+          const titleForAdmin = itemsLabelPlain.length === 1 ? `New Rental Request - ${itemsLabelPlain[0]}` : 'New Rental Request (Multiple Items)';
+
           await notifyAllAdmins(
             'rental_request',
-            'New Rental Request (Multiple Items)',
+            titleForAdmin,
             `${displayName} has requested to rent ${itemLabels.join(', ')} from ${body.startDate} to ${body.endDate}`,
             { requestIds: createdIds, items, userId, userName: displayName, userEmail }
           );
@@ -708,9 +730,11 @@ async function createRentRequestHandler(req, res) {
         }
         const priceLabel = pricePerDay ? ` (₱${pricePerDay}/day)` : '';
 
+        // Title should include the instrument name for single-item rentals
+        const singleTitle = `New Rental Request - ${instrumentName}`;
         await notifyAllAdmins(
           'rental_request',
-          'New Rental Request',
+          singleTitle,
           `${displayName} has requested to rent ${qtyRequested}x ${instrumentName}${priceLabel} from ${startDate} to ${endDate}`,
           { requestId: result.insertId, instrumentName, quantity: qtyRequested, startDate, endDate, userId, userName: displayName, userEmail }
         );
@@ -738,6 +762,202 @@ async function createRentRequestHandler(req, res) {
 // Keep both routes available: the old singular route for compatibility and the preferred plural route
 router.post('/rent-request', authenticateToken, createRentRequestHandler);
 router.post('/rent-requests', authenticateToken, createRentRequestHandler);
+
+// Customer requests reschedule for a rent request (rental)
+router.post('/requests/:id/reschedule-request', authenticateToken, async (req, res) => {
+  try {
+    const requestId = Number(req.params.id);
+    if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ success: false, message: 'Invalid request id' });
+
+    const { newStart, newEnd, newStartDate, newEndDate } = req.body || {};
+
+    // Fetch rent request to ensure it exists and to get user info
+    const [rows] = await pool.query('SELECT rr.*, u.first_name, u.last_name, u.email FROM rent_requests rr LEFT JOIN users u ON rr.user_id = u.id WHERE rr.request_id = ? LIMIT 1', [requestId]);
+    if (!rows || rows.length === 0) return res.status(404).json({ success: false, message: 'Rent request not found' });
+    const rent = rows[0];
+
+    const displayName = ((rent.first_name || '') + ' ' + (rent.last_name || '')).trim() || rent.email || `User #${rent.user_id}`;
+
+    // Notify admins about the reschedule request
+    try {
+      await notifyAllAdmins(
+        'rental_reschedule_request',
+        'Rental Reschedule Request',
+        `${displayName} requests to reschedule rental ${rent.instrument_name} (Request #${requestId}) to ${newStartDate || newStart || 'N/A'} - ${newEndDate || newEnd || 'N/A'}`,
+        { requestId, instrumentName: rent.instrument_name, oldStart: rent.start_date, oldEnd: rent.end_date, newStart: newStartDate || newStart, newEnd: newEndDate || newEnd, userId: rent.user_id, userEmail: rent.email }
+      );
+    } catch (nErr) {
+      console.warn('Failed to notify admins for rental reschedule request:', nErr && nErr.message);
+    }
+
+    // Optionally notify the user that request was received
+    try {
+      await notifyUser(rent.email, 'rental_reschedule_submitted', 'Rental Reschedule Submitted', 'We received your reschedule request. Our team will review it and contact you.', { requestId, newStart: newStartDate || newStart, newEnd: newEndDate || newEnd });
+    } catch (uErr) {
+      console.warn('Failed to notify user about rental reschedule submission:', uErr && uErr.message);
+    }
+
+    res.status(201).json({ success: true, message: 'Reschedule request submitted' });
+  } catch (error) {
+    console.error('Error submitting rental reschedule request:', error);
+    res.status(500).json({ success: false, message: 'Failed to submit reschedule request' });
+  }
+});
+
+// Customer cancels a rent request (rental) - customer must be authenticated
+router.patch('/requests/:id/cancel', authenticateToken, async (req, res) => {
+  try {
+    const requestId = Number(req.params.id);
+    if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ success: false, message: 'Invalid request id' });
+
+    const userId = req.user && req.user.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+
+    console.log(`Attempting rent cancel: requestId=${requestId}, userId=${userId}`);
+
+    // Fetch rent request and ensure it belongs to the requesting user
+    const [rows] = await pool.query('SELECT * FROM rent_requests WHERE request_id = ? LIMIT 1', [requestId]);
+    if (!rows || rows.length === 0) return res.status(404).json({ success: false, message: 'Rent request not found' });
+    const rent = rows[0];
+    console.log('Rent row:', rent);
+    if (Number(rent.user_id) !== Number(userId)) return res.status(403).json({ success: false, message: 'You do not have permission to cancel this rent request' });
+
+    // Do not allow cancelling already-cancelled or rejected requests
+    if (String(rent.status).toLowerCase() === 'cancelled' || String(rent.status).toLowerCase() === 'rejected') {
+      return res.status(400).json({ success: false, message: `This rent request is already ${rent.status}` });
+    }
+
+    // Update status to cancelled
+    try {
+      const [updateRes] = await pool.query('UPDATE rent_requests SET status = ? WHERE request_id = ?', ['cancelled', requestId]);
+      console.log('Rent cancel update result:', updateRes && updateRes.affectedRows ? updateRes.affectedRows : updateRes);
+    } catch (uErr) {
+      // Handle MySQL enum truncation (e.g., 'cancelled' not present in ENUM)
+      const msg = uErr && uErr.message ? uErr.message : '';
+      console.warn('DB error updating rent_requests status, attempting fallback:', msg);
+      if (uErr && (uErr.errno === 1265 || /Data truncated/i.test(msg) || /incorrect enum value/i.test(msg))) {
+        try {
+          // Fallback to 'rejected' which exists in older schemas
+          const [fb] = await pool.query('UPDATE rent_requests SET status = ? WHERE request_id = ?', ['rejected', requestId]);
+          console.log('Rent cancel fallback update result (rejected):', fb && fb.affectedRows ? fb.affectedRows : fb);
+        } catch (fbErr) {
+          console.error('Fallback DB error updating rent_requests status:', fbErr && fbErr.message, fbErr);
+          if (process.env.NODE_ENV === 'development') {
+            return res.status(500).json({ success: false, message: 'Failed to cancel rent request (DB fallback)', error: fbErr && fbErr.message, stack: fbErr && fbErr.stack });
+          }
+          return res.status(500).json({ success: false, message: 'Failed to cancel rent request' });
+        }
+      } else {
+        console.error('DB error updating rent_requests status:', msg, uErr);
+        if (process.env.NODE_ENV === 'development') {
+          return res.status(500).json({ success: false, message: 'Failed to cancel rent request (DB)', error: uErr && uErr.message, stack: uErr && uErr.stack });
+        }
+        return res.status(500).json({ success: false, message: 'Failed to cancel rent request' });
+      }
+    }
+
+    // Inventory release is intentionally skipped here — manual handling expected.
+
+    // Notify admins about cancellation
+    try {
+      const displayName = (req.user && ((req.user.first_name || '') + ' ' + (req.user.last_name || '')).trim()) || req.user.email || `User #${userId}`;
+      await notifyAllAdmins(
+        'rental_cancelled',
+        'Rental Cancelled',
+        `${displayName} cancelled their rental request for ${rent.instrument_name || rent.instrumentName || 'an instrument'}`,
+        { requestId, instrumentName: rent.instrument_name || rent.instrumentName || null, quantity: rent.quantity || 1, userId }
+      );
+    } catch (nErr) {
+      console.warn('Failed to notify admins for rent cancellation:', nErr && nErr.message);
+    }
+
+    return res.json({ success: true, message: 'Rent request cancelled successfully' });
+  } catch (error) {
+    console.error('Error cancelling rent request:', error);
+    const resp = { success: false, message: 'Failed to cancel rent request' };
+    if (process.env.NODE_ENV === 'development') {
+      resp.error = error && error.message ? error.message : String(error);
+      resp.stack = error && error.stack ? error.stack : null;
+    }
+    return res.status(500).json(resp);
+  }
+});
+
+// Admin: mark a cancelled rental as returned and release inventory back to stock
+router.post('/requests/:id/return', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const requestId = Number(req.params.id);
+    if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ success: false, message: 'Invalid request id' });
+
+    // Fetch the rent request
+    const [rows] = await pool.query('SELECT * FROM rent_requests WHERE request_id = ? LIMIT 1', [requestId]);
+    if (!rows || rows.length === 0) return res.status(404).json({ success: false, message: 'Rent request not found' });
+    const rent = rows[0];
+
+    const instrumentId = rent.instrument_id || rent.instrumentId || null;
+    const qty = Number(rent.quantity) || 1;
+
+    // Perform inventory increment inside a connection transaction to ensure consistency
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      if (instrumentId) {
+        await incrementInventory(conn, Number(instrumentId), qty);
+      }
+
+      // Update rent_request status to returned (if column exists), else store returned_at if available
+      try {
+        await conn.query('UPDATE rent_requests SET status = ?, updated_at = NOW() WHERE request_id = ?', ['returned', requestId]);
+      } catch (uErr) {
+        // best-effort: if status column / update fails, log and continue
+        console.warn('Failed to update rent_requests status to returned:', uErr && uErr.message);
+      }
+
+      // Optionally update instrument availability
+      try {
+        const remaining = await getTotalInventory(conn, Number(instrumentId));
+        const newStatus = remaining > 0 ? 'Available' : 'Borrowed';
+        await safeUpdateInstrumentAvailability(conn, Number(instrumentId), newStatus);
+      } catch (sErr) {
+        console.warn('Failed to update instrument availability after return:', sErr && sErr.message);
+      }
+
+      await conn.commit(); conn.release();
+    } catch (txErr) {
+      try { await conn.rollback(); } catch (e) {}
+      conn.release();
+      console.error('Transaction failed returning inventory:', txErr);
+      return res.status(500).json({ success: false, message: 'Failed to return inventory', error: txErr && txErr.message });
+    }
+
+    // Notify the customer that their rental has been marked returned
+    try {
+      if (rent.user_id && rent.user_id > 0 && rent.email) {
+        await notifyUser(rent.email, 'info', 'Rental Returned', `Your rental of ${rent.instrument_name || rent.instrumentName || 'an instrument'} has been marked as returned and placed back to inventory.`, { requestId });
+      } else if (rent.user_id && rent.user_id > 0) {
+        // fetch user email if missing
+        const [uRows] = await pool.query('SELECT email FROM users WHERE id = ? LIMIT 1', [rent.user_id]);
+        if (uRows && uRows[0] && uRows[0].email) {
+          await notifyUser(uRows[0].email, 'info', 'Rental Returned', `Your rental of ${rent.instrument_name || rent.instrumentName || 'an instrument'} has been marked as returned and placed back to inventory.`, { requestId });
+        }
+      }
+    } catch (nErr) {
+      console.warn('Failed to notify user about return:', nErr && nErr.message);
+    }
+
+    // Notify admins for audit trail
+    try {
+      await notifyAllAdmins('rental_returned', 'Rental Returned', `Admin ${req.user.email || req.user.id} marked rental request #${requestId} as returned.`, { requestId, instrumentId, quantity: qty });
+    } catch (aErr) {
+      console.warn('Failed to notify admins about returned rental:', aErr && aErr.message);
+    }
+
+    return res.json({ success: true, message: 'Inventory returned successfully' });
+  } catch (error) {
+    console.error('Error in return endpoint:', error);
+    return res.status(500).json({ success: false, message: 'Failed to return inventory', error: error && error.message });
+  }
+});
 
 // Approve borrow request
 router.put('/borrow-request/:id/approve', authenticateToken, async (req, res) => {
@@ -790,6 +1010,56 @@ router.put('/borrow-request/:id/approve', authenticateToken, async (req, res) =>
 
       // Mark request approved and persist chosen location
       await conn.query('UPDATE borrow_requests SET status = ?, approved_by = ?, approved_at = NOW(), location_id = ? WHERE request_id = ?', ['approved', approvedBy, locationId || null, requestId]);
+
+      // Assign concrete instrument_items to this borrow (if available) so concrete
+      // inventory reflects the borrowed units in instrument_items table. This mirrors
+      // the rent approval assignment logic but marks items as 'Borrowed' and sets
+      // `current_borrow_id` for later return processing.
+      try {
+        const targetLocation = locationId || null;
+        let assignIds = [];
+        if (targetLocation) {
+          const [locRows] = await conn.query(
+            `SELECT item_id FROM instrument_items WHERE instrument_id = ? AND is_active = TRUE AND status = 'Available' AND (location_id = ? OR location_id IS NULL) LIMIT ? FOR UPDATE`,
+            [instrumentId, targetLocation, qtyRequested]
+          );
+          assignIds = (locRows || []).map(r => r.item_id);
+        }
+        if (assignIds.length < qtyRequested) {
+          const need = qtyRequested - assignIds.length;
+          const [moreRows] = await conn.query(
+            `SELECT item_id FROM instrument_items WHERE instrument_id = ? AND is_active = TRUE AND status = 'Available' ${targetLocation ? 'AND (location_id IS NULL OR location_id != ?)' : ''} LIMIT ? FOR UPDATE`,
+            targetLocation ? [instrumentId, targetLocation, need] : [instrumentId, need]
+          );
+          assignIds = assignIds.concat((moreRows || []).map(r => r.item_id));
+        }
+        if (assignIds.length > 0) {
+          const itemStatus = 'Borrowed';
+          if (targetLocation) {
+            await conn.query(
+              `UPDATE instrument_items SET status = ?, current_borrow_id = ?, location_id = ?, updated_at = NOW() WHERE item_id IN (${assignIds.map(() => '?').join(',')})`,
+              [itemStatus, requestId, targetLocation, ...assignIds]
+            );
+          } else {
+            await conn.query(
+              `UPDATE instrument_items SET status = ?, current_borrow_id = ?, updated_at = NOW() WHERE item_id IN (${assignIds.map(() => '?').join(',')})`,
+              [itemStatus, requestId, ...assignIds]
+            );
+          }
+          console.log(`Assigned instrument_items to borrow request ${requestId}: ${assignIds.join(',')}`);
+          // Audit log entry (record assigned item ids)
+          try {
+            await conn.query(
+              `INSERT INTO audit_log (table_name, record_id, action, user_id, user_email, after_value) VALUES ('instrument_items', ?, 'ASSIGN_BORROW', ?, ?, ?)`,
+              [assignIds.join(','), approvedBy, req.user.email || null, JSON.stringify({ assignedItems: assignIds, requestId })]
+            );
+          } catch (alogErr) {
+            console.warn('Failed to write audit log for instrument item assignment (borrow):', alogErr && alogErr.message);
+          }
+        }
+      } catch (assignErr) {
+        console.warn('Failed to assign concrete instrument_items during borrow approval:', assignErr && assignErr.message);
+      }
 
       await conn.commit(); conn.release();
 

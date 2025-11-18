@@ -22,6 +22,8 @@ const Approval = ({ onBackToHome }) => {
           try {
             const borrowResp = await AuthService.get('/instruments/borrow-requests');
             const rentResp = await AuthService.get('/instruments/rent-requests');
+            console.log('Approval: fetched borrow-requests response:', borrowResp);
+            console.log('Approval: fetched rent-requests response:', rentResp);
             const borrow = (borrowResp && borrowResp.requests) ? borrowResp.requests : (Array.isArray(borrowResp) ? borrowResp : []);
             const rent = (rentResp && rentResp.requests) ? rentResp.requests : (Array.isArray(rentResp) ? rentResp : []);
 
@@ -431,6 +433,7 @@ const Approval = ({ onBackToHome }) => {
   window.dispatchEvent(new Event(`${type}RequestsUpdated`));
   // Also notify instrument list consumers that inventory may have changed
   try { window.dispatchEvent(new Event('instrumentsUpdated')); } catch(e) {}
+  try { window.dispatchEvent(new Event('instrumentItemsUpdated')); } catch(e) {}
       return true;
     } catch (err) {
       console.error('Failed to update request', err);
@@ -1059,6 +1062,35 @@ const Approval = ({ onBackToHome }) => {
       borderRadius: 8,
       cursor: 'pointer',
       fontWeight: 600
+    },
+    // Compact icon-only button variants for modal actions
+    smallIconPrimary: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: 44,
+      height: 38,
+      padding: 0,
+      fontSize: 16,
+      backgroundColor: '#059669',
+      color: '#ffffff',
+      border: 'none',
+      borderRadius: 8,
+      cursor: 'pointer'
+    },
+    smallIconDanger: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: 44,
+      height: 38,
+      padding: 0,
+      fontSize: 16,
+      backgroundColor: '#ffffff',
+      color: '#dc2626',
+      border: '1px solid #dc2626',
+      borderRadius: 8,
+      cursor: 'pointer'
     },
     disabledBtn: {
       opacity: 0.6,
@@ -1709,49 +1741,27 @@ const Approval = ({ onBackToHome }) => {
                 {viewDetailsRequest.status === 'pending' && (
                       <>
                         <button
+                          title="Reject"
+                          aria-label="Reject"
                           onClick={async () => {
                             const ok = await handleInstrumentRequestAction(viewDetailsRequest, 'rejected', viewDetailsRequest.type);
                             if (ok) setViewDetailsRequest(null);
                           }}
                           disabled={processingId === viewDetailsRequest.id}
-                          style={{
-                            padding: '10px 20px',
-                            borderRadius: 6,
-                            border: '1px solid #dc2626',
-                            background: 'white',
-                            color: '#dc2626',
-                            fontSize: 14,
-                            fontWeight: 600,
-                            cursor: processingId === viewDetailsRequest.id ? 'not-allowed' : 'pointer',
-                            opacity: processingId === viewDetailsRequest.id ? 0.5 : 1,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6
-                          }}
+                          style={{ ...styles.smallIconDanger, ...(processingId === viewDetailsRequest.id ? styles.disabledBtn : {}) }}
                         >
-                          <FaTimes /> Reject
+                          <FaTimes />
                         </button>
 
                         <button
+                          title="Approve"
+                          aria-label="Approve"
                           onClick={async () => {
                             const ok = await handleInstrumentRequestAction(viewDetailsRequest, 'approved', viewDetailsRequest.type);
                             if (ok) setViewDetailsRequest(null);
                           }}
                           disabled={processingId === viewDetailsRequest.id}
-                          style={{
-                            padding: '10px 24px',
-                            borderRadius: 6,
-                            border: 'none',
-                            background: '#059669',
-                            color: 'white',
-                            fontSize: 14,
-                            fontWeight: 600,
-                            cursor: processingId === viewDetailsRequest.id ? 'not-allowed' : 'pointer',
-                            opacity: processingId === viewDetailsRequest.id ? 0.5 : 1,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6
-                          }}
+                          style={{ ...styles.smallIconPrimary, ...(processingId === viewDetailsRequest.id ? styles.disabledBtn : {}) }}
                         >
                           {processingId === viewDetailsRequest.id ? (
                             <div style={{ 
@@ -1763,7 +1773,7 @@ const Approval = ({ onBackToHome }) => {
                               animation: 'spin 0.6s linear infinite' 
                             }}></div>
                           ) : (
-                            <><FaCheck /> Approve</>
+                            <FaCheck />
                           )}
                         </button>
                       </>

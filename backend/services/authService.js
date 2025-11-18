@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const { pool } = require('../config/database');
+const { notifyAllAdmins } = require('./notificationService');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 let googleClient = null;
@@ -149,6 +150,18 @@ class AuthService {
           is_active: 1,
           is_blocked: 0
         };
+
+        // Notify admins about new registration via Google sign-in
+        try {
+          await notifyAllAdmins(
+            'new_customer',
+            'New Customer Registration',
+            `${userRecord.first_name} ${userRecord.last_name} (${userRecord.email}) has registered via Google Sign-In`,
+            { userId: userRecord.id, email: userRecord.email, name: `${userRecord.first_name} ${userRecord.last_name}` }
+          );
+        } catch (notifyErr) {
+          console.error('Failed to notify admins for Google signup:', notifyErr);
+        }
       }
 
       // Generate JWT token

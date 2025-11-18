@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import NotificationService from '../services/notificationService';
 import AuthService from '../services/authService';
-import ModalCard from './ModalCard';
 import {
   FaCalendarAlt, FaClock, FaMapMarkerAlt, FaCreditCard,
-  FaCheckCircle, FaTimesCircle, FaExclamationCircle, FaUserCircle, FaBan, FaMusic
+  FaCheckCircle, FaTimesCircle, FaExclamationCircle, FaUser, FaBan, FaMusic, FaHome, FaArrowLeft, FaChevronDown
 } from '../icons/fa';
 
 const statusConfig = {
@@ -13,7 +12,6 @@ const statusConfig = {
   rescheduled: { color: '#7c2d12', bg: '#fff7ed', icon: FaClock, label: 'Rescheduled', borderColor: '#fb923c' },
   paid: { color: '#1e3a8a', bg: '#dbeafe', icon: FaCreditCard, label: 'Paid', borderColor: '#3b82f6' },
   rejected: { color: '#7f1d1d', bg: '#fee2e2', icon: FaTimesCircle, label: 'Rejected', borderColor: '#ef4444' },
-  // Make cancelled visually prominent (red) so users see the final state clearly
   cancelled: { color: '#7f1d1d', bg: '#fee2e2', icon: FaBan, label: 'Cancelled', borderColor: '#ef4444' }
 };
 
@@ -27,18 +25,153 @@ export default function BookingHistory() {
   const [rescheduleModal, setRescheduleModal] = useState({ open: false, type: 'booking', item: null, newDate: '', newStart: '', newEnd: '' });
   const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '' });
   const [cancelModal, setCancelModal] = useState({ open: false, type: null, item: null });
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   // Inline style helpers
   const containerStyle = {
     minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
     background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f1f5f9 100%)',
-    paddingBottom: '48px'
+    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
+  };
+
+  // Updated navigation styles to properly center the title
+  const navStyle = {
+    background: 'linear-gradient(180deg, #0b3b78 0%, #0b4f8a 100%)',
+    color: '#fff',
+    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+    padding: windowWidth <= 768 ? '16px 20px' : '20px 40px',
+    position: 'sticky',
+    top: 0,
+    zIndex: 1000,
+    display: 'grid',
+    gridTemplateColumns: windowWidth <= 768 ? '1fr auto' : '1fr auto 1fr', // Balanced 3 columns
+    alignItems: 'center',
+    gap: '20px',
+    boxShadow: '0 4px 12px rgba(7, 24, 48, 0.12)'
+  };
+
+  const logoSectionStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: windowWidth <= 768 ? '8px' : '12px',
+    justifySelf: 'start' // Align to start of first column
+  };
+
+  const logoTextStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start'
+  };
+
+  const logoMainStyle = {
+    fontFamily: 'Georgia, Times, "Times New Roman", serif',
+    fontSize: windowWidth <= 768 ? '20px' : '28px',
+    fontWeight: 'bold',
+    background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #06b6d4 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    margin: 0,
+    letterSpacing: '0.02em'
+  };
+
+  const logoSubStyle = {
+    fontSize: windowWidth <= 768 ? '10px' : '12px',
+    color: '#ffffff',
+    margin: 0,
+    fontWeight: 600,
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase'
+  };
+
+  const pageTitleStyle = {
+    fontSize: windowWidth <= 768 ? '20px' : '26px',
+    fontWeight: 600,
+    color: '#ffffff',
+    margin: 0,
+    letterSpacing: '-0.025em',
+    textAlign: 'center',
+    justifySelf: 'center', // Center in the middle column
+    gridColumn: windowWidth <= 768 ? '1' : '2' // Place in column 2 on desktop, column 1 on mobile
+  };
+
+  // Profile dropdown styles - matching home.jsx exactly
+  const profileButtonStyle = {
+    background: 'transparent',
+    border: 'none',
+    color: '#e6eef8',
+    padding: '0',
+    borderRadius: '999px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+    fontSize: windowWidth <= 768 ? '13px' : '14px',
+    fontWeight: '500',
+    transition: 'all 0.3s ease',
+    justifySelf: 'end' // Align to end of last column
+  };
+
+  const profileDropdownStyle = {
+    position: 'absolute',
+    top: 'calc(100% + 10px)',
+    right: 0,
+    background: '#ffffff',
+    border: '1px solid rgba(15, 76, 129, 0.08)',
+    borderRadius: '12px',
+    padding: '14px',
+    minWidth: '240px',
+    boxShadow: '0 12px 28px rgba(2,6,23,0.18)',
+    zIndex: 1200
+  };
+
+  const userInfoStyle = {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'center',
+    paddingBottom: '8px',
+    borderBottom: '1px solid rgba(11,59,120,0.04)'
+  };
+
+  const avatarStyle = {
+    width: '48px',
+    height: '48px',
+    borderRadius: '10px',
+    overflow: 'hidden',
+    background: '#e6f2ff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#0b3b78',
+    fontWeight: 800,
+    fontSize: '18px'
+  };
+
+  const dropdownItemStyle = {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px',
+    borderRadius: '8px',
+    border: 'none',
+    background: 'transparent',
+    color: '#0b3b78',
+    fontWeight: 600,
+    fontSize: '14px',
+    cursor: 'pointer',
+    transition: 'background 0.2s ease',
+    textAlign: 'left',
+    textDecoration: 'none'
   };
 
   const pageInner = {
     maxWidth: '1120px',
     margin: '0 auto',
-    padding: '24px'
+    padding: windowWidth <= 768 ? '20px 16px' : '24px'
   };
 
   const headerStyle = {
@@ -462,24 +595,29 @@ export default function BookingHistory() {
 
   const handleCancelRental = async (rental) => {
     try {
+      // Use AuthService helper to ensure credentials and consistent error handling
       try {
-        const resp = await fetch(`http://localhost:5000/api/instruments/requests/${rental.id}/cancel`, {
-          method: 'PATCH',
-          credentials: 'include'
-        });
-        if (resp.ok) {
-          const body = await resp.json();
-          if (body && body.success) {
-            setConfirmModal({ open: true, title: 'Rental Cancelled', message: 'Rental cancelled successfully.' });
-            return fetchData();
-          }
+        const apiBase = (process.env.REACT_APP_API_BASE_URL && process.env.REACT_APP_API_BASE_URL.trim()) || 'http://localhost:5000/api';
+        const url = `${apiBase}/instruments/requests/${rental.id}/cancel`;
+        const resp = await AuthService.makeAuthenticatedRequest(url, { method: 'PATCH' });
+        // AuthService throws on non-OK responses, so if we get here it's OK
+        const body = await resp.json();
+        if (body && body.success) {
+          setConfirmModal({ open: true, title: 'Rental Cancelled', message: body.message || 'Rental cancelled successfully.' });
+          await fetchData();
+          return;
         }
+        // Fallback: show server-provided message if present
+        setConfirmModal({ open: true, title: 'Cancellation Failed', message: (body && body.message) ? body.message : 'Failed to cancel rental on server.' });
+        await fetchData();
+        return;
       } catch (err) {
-        console.warn('Cancel rental endpoint failed', err);
+        // AuthService.makeAuthenticatedRequest wraps network errors and surfaces server messages
+        console.warn('Cancel rental failed:', err && err.message ? err.message : err);
+        setConfirmModal({ open: true, title: 'Cancellation Failed', message: err && err.message ? err.message : 'Failed to cancel rental. Please try again later.' });
+        await fetchData();
+        return;
       }
-
-      setConfirmModal({ open: true, title: 'Cancellation Failed', message: 'Failed to cancel rental on server. Please try again later.' });
-      fetchData();
     } catch (err) {
       console.error('Error cancelling rental:', err);
       setConfirmModal({ open: true, title: 'Error', message: 'An error occurred while cancelling the rental.' });
@@ -531,27 +669,214 @@ export default function BookingHistory() {
   };
   const paymentBox = { background: '#ecfdf5', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px', display: 'flex', gap: '12px', alignItems: 'center' };
 
+  // Handle window resize for responsive design
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close dropdown when clicking outside - exactly like home.jsx
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const path = e.composedPath ? e.composedPath() : (e.path || []);
+      const isUser = path.some(p => p && (p.id === 'user-menu' || (p.dataset && p.dataset.userToggle)));
+      if (!isUser) setShowProfileDropdown(false);
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const handleProfileClick = (e) => {
+    e.stopPropagation();
+    setShowProfileDropdown(!showProfileDropdown);
+  };
+
+  const handleBackToHome = () => {
+    window.location.href = '/';
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await AuthService.logout();
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error signing out:', error);
+      window.location.href = '/';
+    }
+  };
+
   return (
     <div style={containerStyle}>
-      <div style={headerStyle}>
-        <div style={headerInner}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <img src="/logo.png" alt="Davao Blue Eagles" style={{ height: 88, width: 'auto', objectFit: 'contain' }} />
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
-                <h2 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{'DAVAO'}</h2>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#2563eb', letterSpacing: '0.08em' }}>{'BLUE EAGLES'}</p>
-              </div>
-              <p style={{ ...subtitleStyle, marginTop: 6 }}>Track your bookings and payment status</p>
-              {user && (
-                <div style={userMeta}>
-                  <span style={{ fontWeight: 600 }}>{user.name || user.customerName}</span> • {user.email}
-                </div>
-              )}
-            </div>
+      {/* Navigation Header */}
+      <nav style={navStyle}>
+        {/* Left: Logo and Band Name */}
+        <div style={logoSectionStyle}>
+          <img 
+            src="/logo.png" 
+            alt="Davao Blue Eagles Marching Band" 
+            style={{ 
+              height: windowWidth <= 768 ? '60px' : '70px',
+              width: 'auto',
+              objectFit: 'contain'
+            }} 
+          />
+          <div style={logoTextStyle}>
+            <h1 style={logoMainStyle}>DAVAO</h1>
+            <p style={logoSubStyle}>BLUE EAGLES</p>
           </div>
         </div>
-      </div>
+
+        {/* Center: Page Title - Properly centered */}
+        <h2 style={pageTitleStyle}>Booking History</h2>
+
+        {/* Right: Profile Dropdown */}
+        <div style={{ position: 'relative', justifySelf: 'end' }}>
+          <button
+            style={profileButtonStyle}
+            onClick={handleProfileClick}
+            data-user-toggle="true"
+            aria-controls="user-menu"
+            aria-expanded={showProfileDropdown}
+          >
+            <div style={{ width: '34px', height: '34px', borderRadius: '999px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: user?.avatar ? 'transparent' : 'linear-gradient(135deg,#06b6d4,#3b82f6)' }}>
+              {user?.avatar ? (
+                <img src={user.avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <FaUser style={{ color: 'white' }} />
+              )}
+            </div>
+            {!windowWidth || windowWidth > 768 ? (
+              <>
+                <span style={{ marginLeft: '6px', color: '#e6eef8', fontWeight: '500' }}>
+                  {user?.firstName || (user?.email ? user.email.split('@')[0] : 'User')}
+                </span>
+                <FaChevronDown style={{ width: '12px', height: '12px', marginLeft: '4px', color: '#cbd5e1' }} />
+              </>
+            ) : null}
+          </button>
+
+          {showProfileDropdown && (
+            <div id="user-menu" role="menu" style={profileDropdownStyle}>
+              <div style={userInfoStyle}>
+                <div style={avatarStyle}>
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    (user?.firstName || user?.email || 'U').charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '15px', color: '#06264a' }}>
+                    {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (user?.email || '').split('@')[0]}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#1e4f8a', marginTop: '3px' }}>{user?.email}</div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '12px', display: 'grid', gap: '8px' }}>
+                <a 
+                  href="#profile" 
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    // Add profile functionality here if needed
+                    setShowProfileDropdown(false); 
+                  }} 
+                  style={dropdownItemStyle}
+                  onMouseEnter={(e) => { e.target.style.background = '#f1f5f9'; }}
+                  onMouseLeave={(e) => { e.target.style.background = 'transparent'; }}
+                >
+                  <FaUser style={{ color: '#0b62d6', minWidth: '18px' }} />
+                  <span>View Profile</span>
+                </a>
+
+                <a 
+                  href="#home" 
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    handleBackToHome(); 
+                    setShowProfileDropdown(false); 
+                  }} 
+                  style={dropdownItemStyle}
+                  onMouseEnter={(e) => { e.target.style.background = '#f1f5f9'; }}
+                  onMouseLeave={(e) => { e.target.style.background = 'transparent'; }}
+                >
+                  <FaHome style={{ color: '#0b62d6', minWidth: '18px' }} />
+                  <span>Back to Home</span>
+                </a>
+
+                <a 
+                  href="#bookings" 
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    window.location.reload(); 
+                    setShowProfileDropdown(false); 
+                  }} 
+                  style={dropdownItemStyle}
+                  onMouseEnter={(e) => { e.target.style.background = '#f1f5f9'; }}
+                  onMouseLeave={(e) => { e.target.style.background = 'transparent'; }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ minWidth: '18px' }}>
+                    <path d="M3 12h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M3 6h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M3 18h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span>Refresh Bookings</span>
+                </a>
+
+                <a 
+                  href="#instruments" 
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    const url = `${window.location.origin}${window.location.pathname}#/instrument-booking`;
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                    setShowProfileDropdown(false); 
+                  }} 
+                  style={dropdownItemStyle}
+                  onMouseEnter={(e) => { e.target.style.background = '#f1f5f9'; }}
+                  onMouseLeave={(e) => { e.target.style.background = 'transparent'; }}
+                >
+                  <FaMusic style={{ color: '#0b62d6', minWidth: '18px' }} />
+                  <span>{user?.role === 'user' ? 'Rent Instrument' : 'Borrow Instrument'}</span>
+                </a>
+
+                {user?.role === 'admin' && (
+                  <a 
+                    href="#dashboard" 
+                    onClick={(e) => { 
+                      e.preventDefault(); 
+                      // Add dashboard navigation here if needed
+                      setShowProfileDropdown(false); 
+                    }} 
+                    style={dropdownItemStyle}
+                    onMouseEnter={(e) => { e.target.style.background = '#f1f5f9'; }}
+                    onMouseLeave={(e) => { e.target.style.background = 'transparent'; }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ minWidth: '18px' }}>
+                      <path d="M3 12h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M3 6h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M3 18h18" stroke="#0b62d6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <span>Admin Dashboard</span>
+                  </a>
+                )}
+
+                <div style={{ height: '1px', background: 'rgba(11,59,120,0.06)', margin: '6px 0' }} />
+
+                <button 
+                  onClick={() => { handleSignOut(); setShowProfileDropdown(false); }} 
+                  style={{ ...dropdownItemStyle, color: 'white', background: '#0b62d6', fontWeight: 800 }}
+                  onMouseEnter={(e) => { e.target.style.background = '#0284c7'; }}
+                  onMouseLeave={(e) => { e.target.style.background = '#0b62d6'; }}
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </nav>
 
       {rescheduleModal.open && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }} onClick={closeRescheduleModal}>
@@ -600,7 +925,19 @@ export default function BookingHistory() {
         </div>
       )}
 
-      <ModalCard open={confirmModal.open} title={confirmModal.title} message={confirmModal.message} onClose={closeConfirmModal} />
+      {confirmModal.open && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5000 }} onClick={closeConfirmModal}>
+          <div style={{ background: '#fff', padding: 24, borderRadius: 12, width: 480, maxWidth: '96%', boxShadow: '0 8px 30px rgba(2,6,23,0.2)' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 18, fontWeight: 600, color: '#0f172a' }}>{confirmModal.title}</h3>
+            <p style={{ marginBottom: 20, color: '#475569', lineHeight: 1.5 }}>{confirmModal.message}</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={closeConfirmModal} style={{ padding: '10px 20px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {cancelModal.open && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4000 }} onClick={closeCancelModal}>
@@ -610,12 +947,12 @@ export default function BookingHistory() {
             {cancelModal.item && cancelModal.type === 'booking' && (
               <div style={{ marginTop: 8, padding: 12, borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                 <div style={{ fontWeight: 700 }}>{cancelModal.item.service}</div>
-                <div style={{ color: '#475569', marginTop: 6 }}>{(cancelModal.item.displayDate || cancelModal.item.date)} • {(cancelModal.item.displayStart || cancelModal.item.startTime)} - {(cancelModal.item.displayEnd || cancelModal.item.endTime)}</div>
+                <div style={{ color: '#475569', marginTop: '6px' }}>{(cancelModal.item.displayDate || cancelModal.item.date)} • {(cancelModal.item.displayStart || cancelModal.item.startTime)} - {(cancelModal.item.displayEnd || cancelModal.item.endTime)}</div>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
               <button onClick={closeCancelModal} style={{ padding: '8px 12px', background: '#f3f4f6', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Close</button>
-              <button onClick={confirmCancel} style={{ padding: '8px 12px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Yes, Cancel</button>
+              <button onClick={confirmCancel} style={{ padding: '8px 12px', background: '#dc2626', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Yes, Cancel</button>
             </div>
           </div>
         </div>
@@ -839,10 +1176,9 @@ export default function BookingHistory() {
                       <div style={{ color: '#64748b' }}>{r.notes}</div>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                         <div style={{ fontWeight: 700, color: '#3730a3' }}>{r.totalAmount ? `₱${Number(r.totalAmount).toLocaleString()}` : '—'}</div>
-                        {(r.status === 'pending' || r.status === 'approved') && (
+                        {(r.status && r.status !== 'cancelled' && r.status !== 'rejected') && (
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button onClick={() => openCancelModal('rental', r)} style={{ padding: '8px 12px', background: '#dc2626', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}>Cancel</button>
-                            <button onClick={() => openRescheduleModal('rental', r)} style={{ padding: '8px 12px', background: '#f59e0b', color: '#111827', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}>Request Reschedule</button>
                           </div>
                         )}
                       </div>
