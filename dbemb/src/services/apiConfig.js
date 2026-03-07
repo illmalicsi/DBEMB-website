@@ -1,8 +1,13 @@
 // Centralized API configuration for frontend services
+const isVercelHost = typeof window !== 'undefined' && /\.vercel\.app$/i.test(window.location.hostname);
+const defaultOrigin = isVercelHost
+  ? 'https://dbemb-backend.onrender.com'
+  : 'http://localhost:5000';
+
 const rawBaseUrl = (
   process.env.REACT_APP_API_BASE_URL ||
   process.env.REACT_APP_API_URL ||
-  'http://localhost:5000'
+  defaultOrigin
 ).trim();
 
 const trimmedBaseUrl = rawBaseUrl.replace(/\/+$/, '');

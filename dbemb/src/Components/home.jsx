@@ -1658,7 +1658,7 @@ const servicesHeaderWrapStyle = {
         console.log('🔍 Verifying user status for:', user.email);
         try {
           // Make a simple API call to verify user status
-          const response = await AuthService.makeAuthenticatedRequest('http://localhost:5000/api/auth/profile');
+          const response = await AuthService.makeAuthenticatedRequest(`${API_BASE_URL}/auth/profile`);
           console.log('✅ User verification response:', response.status);
           if (!response.ok) {
             // User is blocked or deactivated
