@@ -20,7 +20,7 @@ const locationsRoutes = require('./routes/locations');
 const bandPackagesRoutes = require('./routes/bandPackages');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
 // Middleware
 app.use(cors({
@@ -91,6 +91,26 @@ app.use('*', (req, res) => {
   });
 });
 
+const startListening = (port) => {
+  const server = app.listen(port, () => {
+    console.log(`🚀 Server running on port ${port}`);
+    console.log(`📊 Health check: http://localhost:${port}/api/health`);
+    console.log(`🔐 Auth endpoint: http://localhost:${port}/api/auth`);
+  });
+
+  server.on('error', (error) => {
+    if (error && error.code === 'EADDRINUSE') {
+      const nextPort = port + 1;
+      console.warn(`⚠️ Port ${port} is already in use. Retrying on port ${nextPort}...`);
+      setTimeout(() => startListening(nextPort), 150);
+      return;
+    }
+
+    console.error('❌ Server listen error:', error);
+    process.exit(1);
+  });
+};
+
 // Start server
 const startServer = async () => {
   try {
@@ -101,11 +121,7 @@ const startServer = async () => {
       process.exit(1);
     }
 
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-      console.log(`🔐 Auth endpoint: http://localhost:${PORT}/api/auth`);
-    });
+    startListening(PORT);
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);

@@ -1605,6 +1605,7 @@ router.get('/', async (req, res) => {
               i.brand,
               i.condition_status,
               i.availability_status,
+              i.maintenance_count,
               i.price_per_day,
               i.notes,
               i.is_archived,
@@ -1635,6 +1636,7 @@ router.get('/', async (req, res) => {
               i.brand,
               i.condition_status,
               i.availability_status,
+              i.maintenance_count,
               i.price_per_day,
               i.notes,
               i.is_archived,
@@ -1664,6 +1666,7 @@ router.get('/', async (req, res) => {
               i.brand,
               i.condition_status,
               i.availability_status,
+              i.maintenance_count,
               i.price_per_day,
               i.notes,
               i.is_archived,
@@ -1688,6 +1691,7 @@ router.get('/', async (req, res) => {
               i.brand,
               i.condition_status,
               i.availability_status,
+              i.maintenance_count,
               i.price_per_day,
               i.notes,
               i.is_archived,
@@ -1723,8 +1727,10 @@ router.get('/', async (req, res) => {
             // Inventory table is authoritative and already adjusted on reservation.
             r.reserved_rent = 0;
             r.reserved_borrow = 0;
-            r.availableQuantity = Number(r.quantity) || 0;
-            r.computedAvailabilityStatus = (r.availableQuantity > 0) ? 'Available' : 'Rented/Unavailable';
+            // If instrument is under maintenance, prefer configured maintenance_count (per-instrument).
+            const maintenanceDeduction = Number(r.maintenance_count) || ((String(r.availability_status).toLowerCase() === 'maintenance') ? 1 : 0);
+            r.availableQuantity = Math.max((Number(r.quantity) || 0) - maintenanceDeduction, 0);
+            r.computedAvailabilityStatus = (Number(maintenanceDeduction) > 0) ? 'Maintenance' : ((r.availableQuantity > 0) ? 'Available' : 'Rented/Unavailable');
             // DEBUG: log availableQuantity for this instrument (helps trace disappearing dropdown)
             console.log(`[INSTRUMENTS DEBUG] instrument_id=${r.instrument_id} name="${r.name}" availableQuantity=${r.availableQuantity} computedAvailabilityStatus="${r.computedAvailabilityStatus}" reserved_rent=${r.reserved_rent} reserved_borrow=${r.reserved_borrow}`);
             continue;
@@ -1746,11 +1752,14 @@ router.get('/', async (req, res) => {
           const reservedBorrow = (borrowRows && borrowRows[0] && borrowRows[0].reserved_borrow) ? Number(borrowRows[0].reserved_borrow) : 0;
 
           const totalReserved = reservedRent + reservedBorrow;
-          const availableQuantity = (Number(r.quantity) || 0) - totalReserved;
+          let availableQuantity = (Number(r.quantity) || 0) - totalReserved;
+          // Deduct configured maintenance_count (fallback to 1 when availability_status indicates maintenance)
+          const maintDed = Number(r.maintenance_count) || ((String(r.availability_status).toLowerCase() === 'maintenance') ? 1 : 0);
+          availableQuantity = availableQuantity - maintDed;
           r.reserved_rent = reservedRent;
           r.reserved_borrow = reservedBorrow;
           r.availableQuantity = availableQuantity >= 0 ? availableQuantity : 0;
-          r.computedAvailabilityStatus = (availableQuantity > 0) ? 'Available' : 'Rented/Unavailable';
+          r.computedAvailabilityStatus = (Number(maintDed) > 0) ? 'Maintenance' : ((r.availableQuantity > 0) ? 'Available' : 'Rented/Unavailable');
         } catch (e) {
           // best-effort per-row; continue on error
           console.warn('Failed to compute reservations for instrument', r.instrument_id, e && e.message);
@@ -1765,8 +1774,9 @@ router.get('/', async (req, res) => {
       for (const r of rows) {
         r.reserved_rent = 0;
         r.reserved_borrow = 0;
-        r.availableQuantity = Number(r.quantity) || 0;
-        r.computedAvailabilityStatus = r.availability_status || ((Number(r.quantity) || 0) > 0 ? 'Available' : 'Rented/Unavailable');
+        const maintenanceDeduction2 = Number(r.maintenance_count) || ((String(r.availability_status).toLowerCase() === 'maintenance') ? 1 : 0);
+        r.availableQuantity = Math.max((Number(r.quantity) || 0) - maintenanceDeduction2, 0);
+        r.computedAvailabilityStatus = (Number(maintenanceDeduction2) > 0) ? 'Maintenance' : (r.availability_status || ((Number(r.quantity) || 0) > 0 ? 'Available' : 'Rented/Unavailable'));
       }
     }
 
@@ -1865,8 +1875,8 @@ router.post('/', authenticateToken, async (req, res) => {
     try {
       await conn.beginTransaction();
       const [result] = await conn.query(
-        `INSERT INTO instruments (name, category, subcategory, brand, condition_status, availability_status, price_per_day, notes, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, FALSE, NOW(), NOW())`,
-        [name, category, subcategory || null, brand || null, condition || 'Good', status || 'Available', price_per_day || null, notes || null]
+        `INSERT INTO instruments (name, category, subcategory, brand, condition_status, availability_status, maintenance_count, price_per_day, notes, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, NOW(), NOW())`,
+        [name, category, subcategory || null, brand || null, condition || 'Good', status || 'Available', Number(req.body.maintenance_count) || 0, price_per_day || null, notes || null]
       );
       const instrumentId = result.insertId;
 
@@ -1993,7 +2003,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const userId = req.user && req.user.id;
     if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
 
-    const { name, category, subcategory, brand, condition, status, is_archived, notes, price_per_day, locations } = req.body || {};
+    const { name, category, subcategory, brand, condition, status, is_archived, notes, price_per_day, locations, maintenance_count } = req.body || {};
 
     const conn = await pool.getConnection();
     try {
@@ -2016,6 +2026,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         updates.push('availability_status = ?'); values.push(safeStatus);
       }
       if (typeof price_per_day !== 'undefined') { updates.push('price_per_day = ?'); values.push(price_per_day); }
+      if (typeof maintenance_count !== 'undefined') { updates.push('maintenance_count = ?'); values.push(Number(maintenance_count) || 0); }
       if (typeof notes !== 'undefined') { updates.push('notes = ?'); values.push(notes); }
       if (typeof is_archived !== 'undefined') { updates.push('is_archived = ?'); values.push(is_archived ? 1 : 0); }
 
@@ -2093,8 +2104,8 @@ router.post('/:id/replacements', authenticateToken, async (req, res) => {
       await conn.beginTransaction();
 
       const [result] = await conn.query(
-        `INSERT INTO instruments (name, category, subcategory, brand, condition_status, availability_status, price_per_day, notes, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, FALSE, NOW(), NOW())`,
-        [name, category || 'other', subcategory || null, brand || null, condition || 'Good', status || 'Available', price_per_day || null, notes || null]
+        `INSERT INTO instruments (name, category, subcategory, brand, condition_status, availability_status, maintenance_count, price_per_day, notes, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, NOW(), NOW())`,
+        [name, category || 'other', subcategory || null, brand || null, condition || 'Good', status || 'Available', Number(req.body.maintenance_count) || 0, price_per_day || null, notes || null]
       );
       const replacementId = result.insertId;
 

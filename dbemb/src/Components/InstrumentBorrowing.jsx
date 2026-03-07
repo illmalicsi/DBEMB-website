@@ -89,7 +89,7 @@ const InstrumentBorrowing = () => {
         console.warn('InstrumentBorrowing: fetch instruments failed, falling back to localStorage', err);
         try {
           const saved = localStorage.getItem('dbeInventory');
-          if (saved) {
+            if (saved) {
             const parsed = JSON.parse(saved);
             // map to expected shape
             const mapped = (Array.isArray(parsed) ? parsed : []).map(it => ({
@@ -105,7 +105,7 @@ const InstrumentBorrowing = () => {
               availability_status: it.archived ? 'Unavailable' : (it.status || 'Available'),
               condition_status: it.condition_status ?? it.conditionStatus ?? it.condition ?? null
             }));
-            if (!cancelled) setFetchedInstruments(mapped.filter(i => i.availability_status === 'Available'));
+            if (!cancelled) setFetchedInstruments(mapped);
           } else {
             if (!cancelled) setFetchedInstruments([]);
           }
@@ -699,10 +699,11 @@ const InstrumentBorrowing = () => {
                 const sel = fetchedInstruments.find(i => Number(i.instrument_id) === id);
                 if (!sel) return null;
                 const availableQty = (typeof sel.availableQuantity !== 'undefined') ? Number(sel.availableQuantity) : (Number(sel.quantity) || 0);
+                const availLabel = sel.computedAvailabilityStatus || sel.availability_status || 'Unknown';
                 return (
                   <div style={{ marginTop: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(6,95,70,0.15)', background: 'rgba(240,253,244,0.8)', maxWidth: 520 }}>
                     <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>{sel.name}</div>
-                    <div style={{ color: '#475569', fontSize: 13 }}>Availability: <strong style={{ color: sel.availability_status === 'Available' ? '#065f46' : '#b91c1c' }}>{sel.availability_status}{typeof availableQty === 'number' ? ` — ${availableQty} available` : ''}</strong></div>
+                    <div style={{ color: '#475569', fontSize: 13 }}>Availability: <strong style={{ color: availLabel === 'Available' ? '#065f46' : '#b91c1c' }}>{availLabel}{typeof availableQty === 'number' ? ` — ${availableQty} available` : ''}</strong></div>
                     <div style={{ color: '#475569', fontSize: 13 }}>Condition: <strong>{sel.condition_status || 'Unknown'}</strong></div>
                   </div>
                 );

@@ -11,8 +11,12 @@ const dbConfig = {
   connectionLimit: 10,
   queueLimit: 0,
   timezone: '+00:00', // Use UTC for all connections
-  // Return DATE and DATETIME columns as strings to avoid JS Date timezone shifts
-  dateStrings: true
+  dateStrings: true, // Avoid JS Date timezone shifts
+
+  // 🔒 SSL settings for Aiven
+  ssl: {
+    rejectUnauthorized: false
+  }
 };
 
 const pool = mysql.createPool(dbConfig);
@@ -21,7 +25,7 @@ const pool = mysql.createPool(dbConfig);
 const testConnection = async () => {
   try {
     const connection = await pool.getConnection();
-    console.log('✅ Database connected successfully');
+    console.log('✅ Database connected successfully (with SSL)');
     connection.release();
     return true;
   } catch (error) {

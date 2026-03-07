@@ -176,6 +176,17 @@
   CALL add_index_if_missing('instruments','idx_instruments_status','ALTER TABLE instruments ADD INDEX idx_instruments_status (availability_status)');
   CALL add_index_if_missing('instruments','idx_instruments_category','ALTER TABLE instruments ADD INDEX idx_instruments_category (category)');
 
+  -- ============================================================================
+  -- Migration: Ensure `maintenance_count` column exists on `instruments`
+  -- Some MySQL versions do not support `ADD COLUMN IF NOT EXISTS`, so run
+  -- a safe conditional ALTER using information_schema and a prepared statement.
+  -- This is idempotent and safe to run repeatedly.
+  SET @col_exists = (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'instruments' AND column_name = 'maintenance_count');
+  SET @sql = IF(@col_exists = 0, 'ALTER TABLE instruments ADD COLUMN maintenance_count INT DEFAULT 0', 'SELECT "maintenance_count already exists"');
+  PREPARE stmt FROM @sql;
+  EXECUTE stmt; 
+  DEALLOCATE PREPARE stmt;
+
   -- Individual instrument items (serial number tracking)
   CREATE TABLE IF NOT EXISTS instrument_items (
     item_id INT PRIMARY KEY AUTO_INCREMENT,
