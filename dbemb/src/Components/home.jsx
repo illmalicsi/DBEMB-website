@@ -20,6 +20,7 @@ import Dashboard from './dashboard'
 import InstrumentRental from './InstrumentRental'
 import PendingBookings from './PendingBookings'
 import NotificationService from '../services/notificationService'
+import { API_BASE_URL } from '../services/apiConfig'
 import Notifications from './Notifications'
 import AuthService from '../services/authService'
 import TestPaymentGateway from './TestPaymentGateway'
@@ -1741,7 +1742,7 @@ const servicesHeaderWrapStyle = {
     const loadBookingsFromAPI = async () => {
       try {
         console.log('Home: Fetching bookings from API...');
-  const response = await fetch('http://localhost:5000/api/bookings', { credentials: 'include' });
+  const response = await fetch(`${API_BASE_URL}/bookings`, { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
           if (data.success && Array.isArray(data.bookings)) {

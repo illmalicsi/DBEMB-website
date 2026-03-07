@@ -1,6 +1,4 @@
-// API base URL - prefer environment override `REACT_APP_API_BASE_URL`
-// Example: set to 'http://localhost:5000/api/eetctc' to use that path
-const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL && process.env.REACT_APP_API_BASE_URL.trim()) || 'http://localhost:5000/api';
+import { API_BASE_URL } from './apiConfig';
 
 class AuthService {
   // Login user

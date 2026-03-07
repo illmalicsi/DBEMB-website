@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { API_BASE_URL } from './services/apiConfig';
 
 // Simple hash routing for /#/booking and /#/instrument-booking
 const BookStandalone = React.lazy(() => import('./Components/Booking'));
@@ -166,7 +167,7 @@ try {
               try { return original.getItem('user') || original.getItem('davaoBlueEaglesUser'); } catch (e) { return null; }
             })();
             if (!existingUser) {
-              const resp = await fetch('http://localhost:5000/api/auth/profile', {
+              const resp = await fetch(`${API_BASE_URL}/auth/profile`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' }
