@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { FaCreditCard, FaLock, FaCheckCircle, FaTimes, FaDollarSign, FaMobileAlt, FaUniversity, FaUserShield } from '../icons/fa';
 import AuthService from '../services/authService';
 import NotificationService from '../services/notificationService';
+import { API_BASE_URL } from '../services/apiConfig';
 import { formatCurrency } from '../utils/formatters';
 
 // ExactPaymentGateway: Minimal payment gateway that enforces paying the exact amount provided
@@ -90,21 +91,21 @@ const ExactPaymentGateway = ({ open, onClose, amount, bookingDetails, onSuccess 
       let finalInvoiceId = invoiceId;
       if (!finalInvoiceId || finalInvoiceId === '' || finalInvoiceId === 'undefined') {
         const description = finalBookingDetails ? `Payment for ${finalBookingDetails.service || ''}` : `Payment - ${data.method}`;
-        const invoiceResponse = await fetch('http://localhost:5000/api/billing/invoices', {
+        const invoiceResponse = await fetch(`${API_BASE_URL}/billing/invoices`, {
           method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount: data.totalAmount, description })
         });
         if (invoiceResponse.ok) {
           const invoiceData = await invoiceResponse.json();
           finalInvoiceId = invoiceData.invoice.invoice_id;
-          await fetch(`http://localhost:5000/api/billing/invoices/${finalInvoiceId}/status`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved' }) });
+          await fetch(`${API_BASE_URL}/billing/invoices/${finalInvoiceId}/status`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved' }) });
         }
       }
 
       if (finalInvoiceId) {
         const paymentMethodMap = { 'cash': 'cash', 'credit-card': 'card', 'debit-card': 'card', 'gcash': 'online', 'bank-transfer': 'bank_transfer' };
         const paymentData = { invoiceId: finalInvoiceId, amountPaid: data.amount, paymentMethod: paymentMethodMap[data.paymentMode] || 'cash', notes: `Transaction ID: ${data.transactionId}`, paymentType: paymentType, forceFull: true };
-        await fetch('http://localhost:5000/api/billing/payments/customer', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(paymentData) });
+        await fetch(`${API_BASE_URL}/billing/payments/customer`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(paymentData) });
       }
     } catch (e) {}
 

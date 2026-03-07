@@ -18,6 +18,7 @@ const ServiceManagement = React.lazy(() => import('./ServiceManagement'));
 const BookingCalendar = React.lazy(() => import('./BookingCalendar'));
 import Payment from './Payment';
 import NotificationService from '../services/notificationService';
+import { API_BASE_URL } from '../services/apiConfig';
 import { formatCurrency } from '../utils/formatters';
 import RequestQueue from '../services/requestQueue';
 
@@ -60,7 +61,7 @@ const Dashboard = ({ user, onBackToHome, onLogout }) => {
     const loadMyRequests = async () => {
       try {
         const response = await AuthService.makeAuthenticatedRequest(
-          'http://localhost:5000/api/instruments/my-requests'
+          `${API_BASE_URL}/instruments/my-requests`
         );
         const data = await response.json();
         
@@ -167,7 +168,7 @@ const Dashboard = ({ user, onBackToHome, onLogout }) => {
     let mounted = true;
     const loadPrices = async () => {
       try {
-        const res = await fetch((process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000') + '/api/instruments', { credentials: 'include' });
+        const res = await fetch(`${API_BASE_URL}/instruments`, { credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
         const list = Array.isArray(data.instruments) ? data.instruments : (Array.isArray(data) ? data : []);
@@ -197,11 +198,11 @@ const Dashboard = ({ user, onBackToHome, onLogout }) => {
     try {
       const term = String(q).toLowerCase();
       // Fetch small sets in parallel
-      const base = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+      const base = API_BASE_URL;
       const [usersResp, bookingsResp, instrResp] = await Promise.all([
-        fetch(base + '/api/users'),
-        fetch(base + '/api/bookings'),
-        fetch(base + '/api/instruments')
+        fetch(`${base}/users`),
+        fetch(`${base}/bookings`),
+        fetch(`${base}/instruments`)
       ]);
 
       const usersJson = usersResp.ok ? await usersResp.json() : null;
@@ -289,7 +290,7 @@ const Dashboard = ({ user, onBackToHome, onLogout }) => {
       try {
         // Total equipments: sum of quantity from /api/instruments
         try {
-          const res = await fetch((process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000') + '/api/instruments');
+          const res = await fetch(`${API_BASE_URL}/instruments`);
           if (res.ok) {
             const data = await res.json();
             const list = Array.isArray(data.instruments) ? data.instruments : (Array.isArray(data) ? data : []);
@@ -313,7 +314,7 @@ const Dashboard = ({ user, onBackToHome, onLogout }) => {
 
         // Upcoming events: fetch bookings and count future-dated bookings
         try {
-          const bRes = await fetch((process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000') + '/api/bookings');
+          const bRes = await fetch(`${API_BASE_URL}/bookings`);
           if (bRes.ok) {
             const bData = await bRes.json();
             const bookings = Array.isArray(bData.bookings) ? bData.bookings : [];

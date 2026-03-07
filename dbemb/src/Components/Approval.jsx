@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FaCheck, FaTimes, FaArrowLeft, FaMusic, FaUserFriends, FaUser, FaFileAlt, FaInfoCircle } from '../icons/fa';
 import NotificationService from '../services/notificationService';
 import AuthService from '../services/authService';
+import { API_BASE_URL } from '../services/apiConfig';
 
 const Approval = ({ onBackToHome }) => {
   const [borrowRequests, setBorrowRequests] = useState([]);
@@ -179,7 +180,7 @@ const Approval = ({ onBackToHome }) => {
     let mounted = true;
     const loadPrices = async () => {
       try {
-        const res = await AuthService.makeAuthenticatedRequest((process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000') + '/api/instruments');
+        const res = await AuthService.makeAuthenticatedRequest(`${API_BASE_URL}/instruments`);
         const data = await res.json();
         const list = Array.isArray(data.instruments) ? data.instruments : (Array.isArray(data) ? data : []);
         const map = {};

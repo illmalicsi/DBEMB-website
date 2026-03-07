@@ -31,6 +31,7 @@ import {
 } from "../icons/fa";
 import NotificationService from '../services/notificationService';
 import AuthService from '../services/authService';
+import { API_BASE_URL } from '../services/apiConfig';
 import { formatCurrency } from '../utils/formatters';
 import StyledSelect from './StyledSelect';
 
@@ -110,7 +111,7 @@ const CustomerManagement = ({ bookingsData = [] }) => {
   const getStoredBookings = async () => {
     try {
       console.log('CustomerManagement: Fetching bookings from API');
-      const response = await fetch('http://localhost:5000/api/bookings', {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -516,7 +517,7 @@ const CustomerManagement = ({ bookingsData = [] }) => {
       if (!AuthService.isAuthenticated()) throw new Error('Not authenticated');
       
       // Check for overlapping bookings before approving
-      const conflictCheckUrl = 'http://localhost:5000/api/bookings/check-conflict';
+      const conflictCheckUrl = `${API_BASE_URL}/bookings/check-conflict`;
       const conflictResponse = await fetch(conflictCheckUrl, {
         method: 'POST',
         credentials: 'include',
@@ -544,7 +545,7 @@ const CustomerManagement = ({ bookingsData = [] }) => {
         // continue without blocking
       }
       
-      const url = `http://localhost:5000/api/bookings/${booking.id}/status`;
+      const url = `${API_BASE_URL}/bookings/${booking.id}/status`;
       console.log('📡 Making PUT request to:', url);
       const response = await fetch(url, {
         method: 'PUT',
@@ -608,7 +609,7 @@ const CustomerManagement = ({ bookingsData = [] }) => {
       console.log('🔵 CustomerManagement: Rejecting booking', booking.id, 'Full booking:', booking);
       
       if (!AuthService.isAuthenticated()) throw new Error('Not authenticated');
-      const url = `http://localhost:5000/api/bookings/${booking.id}/status`;
+      const url = `${API_BASE_URL}/bookings/${booking.id}/status`;
       console.log('📡 Making PUT request to:', url);
       const response = await fetch(url, {
         method: 'PUT',

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import AuthService from '../services/authService';
 import RequestQueue from '../services/requestQueue';
+import { API_BASE_URL } from '../services/apiConfig';
 import { FaCalendarAlt, FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCheckCircle, FaSpinner, FaChevronLeft, FaChevronRight, FaInfoCircle, FaGuitar } from '../icons/fa';
 import StyledSelect from './StyledSelect';
 
@@ -72,7 +73,7 @@ const InstrumentBorrowing = () => {
       setLoadingInstruments(true);
       setInstrumentsError(null);
       try {
-  const res = await fetch('http://localhost:5000/api/instruments', { credentials: 'include' });
+  const res = await fetch(`${API_BASE_URL}/instruments`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to fetch instruments');
         const data = await res.json();
         if (!cancelled) {

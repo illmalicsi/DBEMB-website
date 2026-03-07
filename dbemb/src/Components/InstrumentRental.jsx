@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import AuthService from '../services/authService';
 import RequestQueue from '../services/requestQueue';
+import { API_BASE_URL } from '../services/apiConfig';
 import InstrumentTerms from './InstrumentTerms';
 import { FaCalendarAlt, FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCheckCircle, FaSpinner, FaChevronLeft, FaChevronRight, FaInfoCircle, FaGuitar } from 'react-icons/fa';
 
@@ -118,7 +119,7 @@ const InstrumentRental = () => {
     setInstrumentsError(null);
     try {
       // If dates selected, ask backend for availability in that range
-      let url = 'http://localhost:5000/api/instruments';
+      let url = `${API_BASE_URL}/instruments`;
       if (rentalStartDate && rentalEndDate) {
         url += `?start=${encodeURIComponent(rentalStartDate)}&end=${encodeURIComponent(rentalEndDate)}`;
       }

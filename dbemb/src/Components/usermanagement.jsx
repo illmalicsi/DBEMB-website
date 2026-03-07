@@ -14,6 +14,7 @@
     FaEyeSlash
   } from "../icons/fa";
   import AuthService from '../services/authService';
+  import { API_BASE_URL } from '../services/apiConfig';
 
   const UserManagement = ({ user }) => {
     const [users, setUsers] = useState([]);
@@ -87,7 +88,7 @@
         // Fetch roles from backend (not protected)
         const fetchRoles = async () => {
           try {
-            const res = await fetch('http://localhost:5000/api/roles', { credentials: 'include' });
+            const res = await fetch(`${API_BASE_URL}/roles`, { credentials: 'include' });
             if (!res.ok) throw new Error('Failed to fetch roles');
             const data = await res.json();
             if (data && data.roles) {

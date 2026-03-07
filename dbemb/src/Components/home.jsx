@@ -2227,7 +2227,7 @@ const servicesHeaderWrapStyle = {
         paymentMethod: paymentMethod
       };
 
-      const resp = await fetch('http://localhost:5000/api/billing/pay-booking', {
+      const resp = await fetch(`${API_BASE_URL}/billing/pay-booking`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -2459,7 +2459,7 @@ const servicesHeaderWrapStyle = {
       const stored = JSON.parse(localStorage.getItem('davaoBlueEaglesUser') || 'null') || user || {};
       
       // Update database
-      const response = await fetch('http://localhost:5000/api/users/profile', {
+      const response = await fetch(`${API_BASE_URL}/users/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -2742,7 +2742,7 @@ const servicesHeaderWrapStyle = {
                           // Sync with backend database
                           if (stored?.id) {
                             try {
-                              const response = await fetch(`http://localhost:5000/api/users/${stored.id}/avatar`, {
+                              const response = await fetch(`${API_BASE_URL}/users/${stored.id}/avatar`, {
                                 method: 'PATCH',
                                 headers: { 'Content-Type': 'application/json' },
                                 credentials: 'include',
@@ -2783,7 +2783,7 @@ const servicesHeaderWrapStyle = {
                         // Sync with backend database (remove avatar)
                         if (stored?.id) {
                           try {
-                            const response = await fetch(`http://localhost:5000/api/users/${stored.id}/avatar`, {
+                            const response = await fetch(`${API_BASE_URL}/users/${stored.id}/avatar`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
                               credentials: 'include',

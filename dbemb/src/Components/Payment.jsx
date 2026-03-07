@@ -4,8 +4,7 @@ import { useLocation } from 'react-router-dom';
 import ReactDOM from 'react-dom';
 import { FaCreditCard, FaArrowLeft, FaDollarSign, FaUser, FaClock, FaCheck, FaTimes, FaSpinner, FaReceipt, FaEye } from '../icons/fa';
 import AuthService from '../services/authService';
-
-const API_BASE_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from '../services/apiConfig';
 
 const Payment = ({ onBackToHome }) => {
   const [invoices, setInvoices] = useState([]);

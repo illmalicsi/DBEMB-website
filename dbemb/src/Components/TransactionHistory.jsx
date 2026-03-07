@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FaHistory, FaArrowLeft, FaDollarSign, FaReceipt, FaClock, FaFilter, FaDownload, FaSearch } from '../icons/fa';
 import AuthService from '../services/authService';
-
-const API_BASE_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from '../services/apiConfig';
 
 const TransactionHistory = ({ onBackToHome }) => {
   const [transactions, setTransactions] = useState([]);
@@ -35,7 +34,7 @@ const TransactionHistory = ({ onBackToHome }) => {
           const user = AuthService.getUser();
           const email = user?.email;
           if (email) {
-            const payRes = await AuthService.makeAuthenticatedRequest(`${API_BASE_URL.replace('/api','')}/api/payments/user/${encodeURIComponent(email)}`);
+            const payRes = await AuthService.makeAuthenticatedRequest(`${API_BASE_URL}/payments/user/${encodeURIComponent(email)}`);
             // Note: payments route lives under /api/payments
             if (payRes && payRes.ok) {
               const payData = await payRes.json();

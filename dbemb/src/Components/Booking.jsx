@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FaCalendarAlt, FaClock, FaUser, FaUsers, FaEnvelope, FaPhone, FaMapMarkerAlt, FaMusic, FaCheckCircle, FaSpinner, FaChevronLeft, FaChevronRight, FaInfoCircle, FaGuitar, FaDrum, FaKeyboard, FaPlus, FaCreditCard, FaTimes } from '../icons/fa';
 import NotificationService from '../services/notificationService';
 import mysqlService from '../services/mysqlService';
+import { API_BASE_URL } from '../services/apiConfig';
 import StyledSelect from './StyledSelect';
 import { formatCurrency } from '../utils/formatters';
 
@@ -171,7 +172,7 @@ const Booking = ({ bookings: propBookings = [], setBookings: propSetBookings }) 
     const loadInstruments = async () => {
       setLoadingInstruments(true);
       try {
-        console.log('Fetching instruments from:', `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/instruments`);
+        console.log('Fetching instruments from:', `${API_BASE_URL}/instruments`);
         const resp = await mysqlService.get('/instruments');
         console.log('Instruments response:', resp); // Debug log
         console.log('Response type:', typeof resp, 'Is array:', Array.isArray(resp)); // Debug log
@@ -278,7 +279,7 @@ const Booking = ({ bookings: propBookings = [], setBookings: propSetBookings }) 
         setTimeout(() => setShowSuccess(false), 5000);
         return;
       }
-  const response = await fetch('http://localhost:5000/api/bookings', { credentials: 'include' });
+  const response = await fetch(`${API_BASE_URL}/bookings`, { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         console.log('API /api/bookings response:', data);
@@ -466,7 +467,7 @@ const Booking = ({ bookings: propBookings = [], setBookings: propSetBookings }) 
         numPieces: numPiecesValue
       };
 
-      const response = await fetch('http://localhost:5000/api/bookings', {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

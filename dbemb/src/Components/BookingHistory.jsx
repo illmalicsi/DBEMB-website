@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import NotificationService from '../services/notificationService';
 import AuthService from '../services/authService';
+import { API_BASE_URL } from '../services/apiConfig';
 import {
   FaCalendarAlt, FaClock, FaMapMarkerAlt, FaCreditCard,
   FaCheckCircle, FaTimesCircle, FaExclamationCircle, FaUser, FaBan, FaMusic, FaHome, FaArrowLeft, FaChevronDown
@@ -216,7 +217,7 @@ export default function BookingHistory() {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/bookings', { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/bookings`, { credentials: 'include' });
       const data = await res.json();
       if (data.success && Array.isArray(data.bookings)) {
         let formatted = data.bookings.map(b => ({
@@ -277,7 +278,7 @@ export default function BookingHistory() {
     }
 
     try {
-      const paymentsRes = await fetch('http://localhost:5000/api/payments/user/' + (u?.email || ''), { credentials: 'include' });
+      const paymentsRes = await fetch(`${API_BASE_URL}/payments/user/` + (u?.email || ''), { credentials: 'include' });
       const paymentsBody = await paymentsRes.json();
       if (paymentsBody.success && Array.isArray(paymentsBody.payments)) {
         setPayments(paymentsBody.payments);
@@ -293,7 +294,7 @@ export default function BookingHistory() {
         const instrumentPriceMapById = new Map();
         const instrumentPriceMapByName = new Map();
         try {
-          const instrRes = await fetch('http://localhost:5000/api/instruments', { credentials: 'include' });
+          const instrRes = await fetch(`${API_BASE_URL}/instruments`, { credentials: 'include' });
           if (instrRes && instrRes.ok) {
             const instrBody = await instrRes.json();
             const instrList = Array.isArray(instrBody) ? instrBody : (instrBody && Array.isArray(instrBody.instruments) ? instrBody.instruments : []);
@@ -307,7 +308,7 @@ export default function BookingHistory() {
           console.warn('Failed to fetch instruments for price map (optional):', e && e.message);
         }
 
-        const res = await fetch('http://localhost:5000/api/instruments/my-requests', { credentials: 'include' });
+        const res = await fetch(`${API_BASE_URL}/instruments/my-requests`, { credentials: 'include' });
         let body = null;
         try {
           body = await res.json();
@@ -411,7 +412,7 @@ export default function BookingHistory() {
       const body = { email: String(payloadEmail).toLowerCase().trim() };
       console.debug('Cancelling booking', bookingId, 'payload:', body);
 
-      const response = await fetch(`http://localhost:5000/api/bookings/${bookingId}/cancel`, {
+      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/cancel`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -506,7 +507,7 @@ export default function BookingHistory() {
     try {
       if (type === 'booking') {
         try {
-          const resp = await fetch(`http://localhost:5000/api/bookings/${item.id}/reschedule-request`, {
+          const resp = await fetch(`${API_BASE_URL}/bookings/${item.id}/reschedule-request`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -548,7 +549,7 @@ export default function BookingHistory() {
       }
 
       try {
-        const resp = await fetch(`http://localhost:5000/api/instruments/requests/${item.id}/reschedule-request`, {
+        const resp = await fetch(`${API_BASE_URL}/instruments/requests/${item.id}/reschedule-request`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -597,8 +598,7 @@ export default function BookingHistory() {
     try {
       // Use AuthService helper to ensure credentials and consistent error handling
       try {
-        const apiBase = (process.env.REACT_APP_API_BASE_URL && process.env.REACT_APP_API_BASE_URL.trim()) || 'http://localhost:5000/api';
-        const url = `${apiBase}/instruments/requests/${rental.id}/cancel`;
+        const url = `${API_BASE_URL}/instruments/requests/${rental.id}/cancel`;
         const resp = await AuthService.makeAuthenticatedRequest(url, { method: 'PATCH' });
         // AuthService throws on non-OK responses, so if we get here it's OK
         const body = await resp.json();

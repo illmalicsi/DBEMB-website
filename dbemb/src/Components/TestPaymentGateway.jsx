@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { FaCreditCard, FaLock, FaCheckCircle, FaTimes, FaDollarSign, FaMobileAlt, FaUniversity, FaUserShield } from '../icons/fa';
 import AuthService from '../services/authService';
 import NotificationService from '../services/notificationService';
+import { API_BASE_URL } from '../services/apiConfig';
 import { formatCurrency } from '../utils/formatters';
 
 const TestPaymentGateway = ({ open, onClose, amount, bookingDetails, onSuccess }) => {
@@ -222,7 +223,7 @@ const TestPaymentGateway = ({ open, onClose, amount, bookingDetails, onSuccess }
           ? `Payment for ${finalBookingDetails.service || ''}`
           : `Payment - ${data.method}`;
         
-        const invoiceResponse = await fetch('http://localhost:5000/api/billing/invoices', {
+        const invoiceResponse = await fetch(`${API_BASE_URL}/billing/invoices`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -237,7 +238,7 @@ const TestPaymentGateway = ({ open, onClose, amount, bookingDetails, onSuccess }
           finalInvoiceId = invoiceData.invoice.invoice_id;
           
           // Approve the invoice
-          await fetch(`http://localhost:5000/api/billing/invoices/${finalInvoiceId}/status`, {
+          await fetch(`${API_BASE_URL}/billing/invoices/${finalInvoiceId}/status`, {
             method: 'PUT',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -265,7 +266,7 @@ const TestPaymentGateway = ({ open, onClose, amount, bookingDetails, onSuccess }
           forceFull: !!forceFull
         };
         
-        await fetch('http://localhost:5000/api/billing/payments/customer', {
+        await fetch(`${API_BASE_URL}/billing/payments/customer`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },

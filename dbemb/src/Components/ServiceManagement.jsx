@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaMusic, FaEdit, FaSave, FaTimes, FaPlus, FaToggleOn, FaToggleOff, FaUsers, FaTruck, FaUtensils, FaChevronDown, FaChevronUp, FaConciergeBell } from '../icons/fa';
+import { API_BASE_URL } from '../services/apiConfig';
 
 const ServiceManagement = () => {
   const [services, setServices] = useState([]);
@@ -389,7 +390,7 @@ const ServiceManagement = () => {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/services/all', {
+      const response = await fetch(`${API_BASE_URL}/services/all`, {
         credentials: 'include'
       });
       const data = await response.json();
@@ -405,7 +406,7 @@ const ServiceManagement = () => {
 
   const fetchBandPackages = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/band-packages/all', {
+      const response = await fetch(`${API_BASE_URL}/band-packages/all`, {
         credentials: 'include'
       });
       const data = await response.json();
@@ -430,7 +431,7 @@ const ServiceManagement = () => {
 
   const handleSave = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/services/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/services/${id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -460,7 +461,7 @@ const ServiceManagement = () => {
       onConfirm: async () => {
         try {
           // fetch current service so we can send a full update payload (backend requires name & default_price)
-          const getRes = await fetch(`http://localhost:5000/api/services/${id}`);
+          const getRes = await fetch(`${API_BASE_URL}/services/${id}`);
           if (!getRes.ok) {
             const err = await getRes.json().catch(() => ({}));
             alert(err.message || 'Failed to load service');
@@ -475,7 +476,7 @@ const ServiceManagement = () => {
             is_active: 0
           };
 
-          const resp = await fetch(`http://localhost:5000/api/services/${id}`, {
+          const resp = await fetch(`${API_BASE_URL}/services/${id}`, {
             method: 'PUT',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -499,7 +500,7 @@ const ServiceManagement = () => {
     return;
     try {
       // fetch current service so we can send a full update payload (backend requires name & default_price)
-      const getRes = await fetch(`http://localhost:5000/api/services/${id}`);
+      const getRes = await fetch(`${API_BASE_URL}/services/${id}`);
       if (!getRes.ok) {
         const err = await getRes.json().catch(() => ({}));
         alert(err.message || 'Failed to load service');
@@ -514,7 +515,7 @@ const ServiceManagement = () => {
         is_active: 0
       };
 
-      const resp = await fetch(`http://localhost:5000/api/services/${id}`, {
+      const resp = await fetch(`${API_BASE_URL}/services/${id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -537,7 +538,7 @@ const ServiceManagement = () => {
 
   const handleUnarchiveService = async (id) => {
     try {
-      const getRes = await fetch(`http://localhost:5000/api/services/${id}`);
+      const getRes = await fetch(`${API_BASE_URL}/services/${id}`);
       if (!getRes.ok) {
         const err = await getRes.json().catch(() => ({}));
         alert(err.message || 'Failed to load service');
@@ -552,7 +553,7 @@ const ServiceManagement = () => {
         is_active: 1
       };
 
-      const resp = await fetch(`http://localhost:5000/api/services/${id}`, {
+      const resp = await fetch(`${API_BASE_URL}/services/${id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -574,7 +575,7 @@ const ServiceManagement = () => {
 
   const handleAddService = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/services', {
+      const response = await fetch(`${API_BASE_URL}/services`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -616,7 +617,7 @@ const ServiceManagement = () => {
 
   const handleSavePackage = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/band-packages/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/band-packages/${id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -647,7 +648,7 @@ const ServiceManagement = () => {
       onConfirm: async () => {
         try {
           // fetch current package to build a full update payload (backend requires name & price)
-          const getRes = await fetch(`http://localhost:5000/api/band-packages/${id}`);
+          const getRes = await fetch(`${API_BASE_URL}/band-packages/${id}`);
           if (!getRes.ok) {
             const err = await getRes.json().catch(() => ({}));
             alert(err.message || 'Failed to load band package');
@@ -667,7 +668,7 @@ const ServiceManagement = () => {
             is_active: 0
           };
 
-          const resp = await fetch(`http://localhost:5000/api/band-packages/${id}`, {
+          const resp = await fetch(`${API_BASE_URL}/band-packages/${id}`, {
             method: 'PUT',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -690,7 +691,7 @@ const ServiceManagement = () => {
     return;
     try {
       // fetch current package to build a full update payload (backend requires name & price)
-      const getRes = await fetch(`http://localhost:5000/api/band-packages/${id}`);
+      const getRes = await fetch(`${API_BASE_URL}/band-packages/${id}`);
       if (!getRes.ok) {
         const err = await getRes.json().catch(() => ({}));
         alert(err.message || 'Failed to load band package');
@@ -710,7 +711,7 @@ const ServiceManagement = () => {
         is_active: 0
       };
 
-      const resp = await fetch(`http://localhost:5000/api/band-packages/${id}`, {
+      const resp = await fetch(`${API_BASE_URL}/band-packages/${id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -732,7 +733,7 @@ const ServiceManagement = () => {
 
   const handleUnarchivePackage = async (id) => {
     try {
-      const getRes = await fetch(`http://localhost:5000/api/band-packages/${id}`);
+      const getRes = await fetch(`${API_BASE_URL}/band-packages/${id}`);
       if (!getRes.ok) {
         const err = await getRes.json().catch(() => ({}));
         alert(err.message || 'Failed to load band package');
@@ -752,7 +753,7 @@ const ServiceManagement = () => {
         is_active: 1
       };
 
-      const resp = await fetch(`http://localhost:5000/api/band-packages/${id}`, {
+      const resp = await fetch(`${API_BASE_URL}/band-packages/${id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -774,7 +775,7 @@ const ServiceManagement = () => {
 
   const handleAddPackage = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/band-packages', {
+      const response = await fetch(`${API_BASE_URL}/band-packages`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

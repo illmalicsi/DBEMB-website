@@ -6,12 +6,13 @@ import {
   FaCheckCircle, FaPhone, FaEnvelope
 } from '../icons/fa';
 import ConflictModal from './ConflictModal';
+import { API_BASE_URL } from '../services/apiConfig';
 import { formatCurrency } from '../utils/formatters';
 
 // Simple helper to PUT booking status with credentials included
 // Returns an object { ok, status, data }
 const updateBookingStatus = async (bookingId, status) => {
-  const url = `http://localhost:5000/api/bookings/${bookingId}/status`;
+  const url = `${API_BASE_URL}/bookings/${bookingId}/status`;
   const resp = await fetch(url, {
     method: 'PUT',
     credentials: 'include',
@@ -105,7 +106,7 @@ const UpcomingSchedule = () => {
 
   const fetchUpcomingBookings = async (excludeIds = []) => {
     try {
-      const response = await fetch('http://localhost:5000/api/bookings', {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
         credentials: 'include'
       });
 
@@ -178,7 +179,7 @@ const UpcomingSchedule = () => {
 
         // Fetch fresh bookings from server and try to locate the target
         try {
-          const response = await fetch('http://localhost:5000/api/bookings', { credentials: 'include' });
+          const response = await fetch(`${API_BASE_URL}/bookings`, { credentials: 'include' });
           const data = await response.json();
           const list = Array.isArray(data.bookings) ? data.bookings : [];
           const pending = list.map(b => ({ ...b, id: b.booking_id }));

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaUserPlus, FaCheck, FaTimes, FaExclamationCircle, FaUsers, FaClock, FaChevronDown, FaChevronUp, FaPhone, FaBirthdayCake, FaMusic, FaMapMarkerAlt, FaFileAlt, FaEnvelope, FaCalendarAlt } from '../icons/fa';
 import AuthService from '../services/authService';
+import { API_BASE_URL } from '../services/apiConfig';
 
 const MembershipApproval = ({ user, onBackToHome, onLogout, embedded = false }) => {
   const [pendingMembers, setPendingMembers] = useState([]);
@@ -687,7 +688,7 @@ const MembershipApproval = ({ user, onBackToHome, onLogout, embedded = false }) 
                                     <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600' }}>Identity Proof</div>
                                     {member.identity_proof ? (
                                       <a 
-                                        href={`http://localhost:5000/${member.identity_proof}`}
+                                        href={`${API_BASE_URL.replace(/\/api$/i, '')}/${member.identity_proof}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{

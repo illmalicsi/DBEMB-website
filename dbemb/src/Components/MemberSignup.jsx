@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import authService from '../services/authService';
+import { API_BASE_URL } from '../services/apiConfig';
 import {
   FaUpload,
   FaUser,
@@ -45,7 +46,7 @@ const Signup = ({ onSignup, onClose, onSwitchToLogin }) => {
     const fetchInstrumentTypes = async () => {
       try {
         console.log('Fetching instrument types...');
-  const response = await fetch('http://localhost:5000/api/instruments/types', { credentials: 'include' });
+  const response = await fetch(`${API_BASE_URL}/instruments/types`, { credentials: 'include' });
         console.log('Response status:', response.status);
         const data = await response.json();
         console.log('Instrument types data:', data);
