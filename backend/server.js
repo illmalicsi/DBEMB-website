@@ -23,10 +23,49 @@ const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 
 // Middleware
-app.use(cors({
-  origin: true, // Allow all origins in development
-  credentials: true
-}));
+const parseCsv = (value) => String(value || '')
+  .split(',')
+  .map(v => v.trim())
+  .filter(Boolean);
+
+const allowedOrigins = new Set([
+  ...parseCsv(process.env.CORS_ORIGINS),
+  ...parseCsv(process.env.FRONTEND_URL),
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'https://dbemb-website.vercel.app'
+]);
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.has(origin)) return true;
+  try {
+    const { hostname } = new URL(origin);
+    return hostname.endsWith('.vercel.app');
+  } catch (e) {
+    return false;
+  }
+};
+
+const corsOptionsDelegate = (req, callback) => {
+  const origin = req.header('Origin');
+  const allow = isAllowedOrigin(origin);
+
+  if (!allow) {
+    console.warn(`⛔ CORS blocked for origin: ${origin || 'unknown'}`);
+  }
+
+  callback(null, {
+    origin: allow,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    optionsSuccessStatus: 204
+  });
+};
+
+app.use(cors(corsOptionsDelegate));
+app.options('*', cors(corsOptionsDelegate));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 // Parse cookies so we can read HttpOnly session cookies

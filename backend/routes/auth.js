@@ -11,6 +11,13 @@ const { pool } = require('../config/database');
 const { notifyAllAdmins } = require('../services/notificationService');
 const { authenticateToken } = require('../middleware/auth');
 
+const isProd = process.env.NODE_ENV === 'production';
+const authCookieBaseOptions = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: isProd ? 'none' : 'lax'
+};
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -54,9 +61,7 @@ router.post('/login', async (req, res) => {
     // Set HttpOnly cookie with JWT token
     const token = result.token;
     const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      ...authCookieBaseOptions,
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     };
     res.cookie('session', token, cookieOptions);
@@ -126,9 +131,7 @@ router.post('/register', upload.single('identityProof'), async (req, res) => {
     // Optionally auto-login newly registered user by issuing JWT cookie
     const token = jwt.sign({ userId: user.id, email: user.email, role_name: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
     const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      ...authCookieBaseOptions,
       maxAge: 24 * 60 * 60 * 1000
     };
     res.cookie('session', token, cookieOptions);
@@ -155,9 +158,7 @@ router.post('/google', async (req, res) => {
 
     const token = result.token;
     const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      ...authCookieBaseOptions,
       maxAge: 24 * 60 * 60 * 1000
     };
     res.cookie('session', token, cookieOptions);
@@ -187,9 +188,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
 // Logout (clear cookie)
 router.post('/logout', (req, res) => {
   const cookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax'
+    ...authCookieBaseOptions
   };
   res.clearCookie('session', cookieOptions);
   res.json({ success: true, message: 'Logged out' });
