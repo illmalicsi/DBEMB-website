@@ -605,7 +605,7 @@
   -- reserved_location index removed (reserved columns removed)
 
   -- ============================================================================
-  -- Migration: Ensure 'cancelled' status exists on rent_requests.status ENUM
+  -- Migration 010: Ensure 'cancelled' status exists on rent_requests.status ENUM
   -- This ALTER is safe to run repeatedly: if the enum already contains
   -- 'cancelled' the MODIFY will effectively be a no-op.
   -- Added 2025-11-18
@@ -737,7 +737,10 @@
     INDEX idx_read_at (read_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-  -- Reschedule requests table: stores customer-initiated reschedule requests for bookings
+  -- ============================================================================
+  -- Migration 011: Create reschedule_requests table (idempotent)
+  -- Mirrors backend/migrations/011-create-reschedule-requests.sql
+  -- ============================================================================
   CREATE TABLE IF NOT EXISTS reschedule_requests (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     booking_id INT NOT NULL,

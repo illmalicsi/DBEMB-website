@@ -5,16 +5,11 @@ const { pool } = require('../config/database');
 const billingService = require('../services/billingService');
 const { notifyAllAdmins, notifyUser } = require('../services/notificationService');
 
-// Get all bookings (public endpoint for calendar display)
-router.get('/', async (req, res) => {
-  try {
-    // Disable caching to always get fresh data
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    
-    const [bookings] = await pool.query(
-      `SELECT b.*, 
+async function fetchBookingsRows(email = null) {
+  const whereClause = email ? 'WHERE b.email = ?' : '';
+  const params = email ? [email] : [];
+
+  const queryWithReschedule = `SELECT b.*, 
               u.first_name, u.last_name,
               approver.first_name AS approver_first_name,
               approver.last_name AS approver_last_name,
@@ -25,8 +20,50 @@ router.get('/', async (req, res) => {
        FROM bookings b
        LEFT JOIN users u ON b.user_id = u.id
        LEFT JOIN users approver ON b.approved_by = approver.id
-       ORDER BY b.created_at DESC`
-    );
+       ${whereClause}
+       ORDER BY b.created_at DESC`;
+
+  try {
+    const [rows] = await pool.query(queryWithReschedule, params);
+    return rows;
+  } catch (error) {
+    const isMissingRescheduleTable =
+      error &&
+      error.code === 'ER_NO_SUCH_TABLE' &&
+      /reschedule_requests/i.test(String(error.message || ''));
+
+    if (!isMissingRescheduleTable) {
+      throw error;
+    }
+
+    const queryWithoutReschedule = `SELECT b.*, 
+              u.first_name, u.last_name,
+              approver.first_name AS approver_first_name,
+              approver.last_name AS approver_last_name,
+              NULL AS requested_date,
+              NULL AS requested_start,
+              NULL AS requested_end,
+              NULL AS reschedule_status
+       FROM bookings b
+       LEFT JOIN users u ON b.user_id = u.id
+       LEFT JOIN users approver ON b.approved_by = approver.id
+       ${whereClause}
+       ORDER BY b.created_at DESC`;
+
+    const [rows] = await pool.query(queryWithoutReschedule, params);
+    return rows;
+  }
+}
+
+// Get all bookings (public endpoint for calendar display)
+router.get('/', async (req, res) => {
+  try {
+    // Disable caching to always get fresh data
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
+    const bookings = await fetchBookingsRows();
 
     // Normalize date fields to YYYY-MM-DD strings to avoid timezone shifts on the client
     const formatted = (bookings || []).map(b => ({
@@ -58,20 +95,7 @@ router.get('/user/:email', async (req, res) => {
     res.set('Expires', '0');
     
     const { email } = req.params;
-    const [bookings] = await pool.query(
-      `SELECT b.*, 
-              approver.first_name AS approver_first_name,
-              approver.last_name AS approver_last_name,
-              (SELECT rr.requested_date FROM reschedule_requests rr WHERE rr.booking_id = b.booking_id ORDER BY rr.created_at DESC LIMIT 1) AS requested_date,
-              (SELECT rr.requested_start FROM reschedule_requests rr WHERE rr.booking_id = b.booking_id ORDER BY rr.created_at DESC LIMIT 1) AS requested_start,
-              (SELECT rr.requested_end FROM reschedule_requests rr WHERE rr.booking_id = b.booking_id ORDER BY rr.created_at DESC LIMIT 1) AS requested_end,
-              (SELECT rr.status FROM reschedule_requests rr WHERE rr.booking_id = b.booking_id ORDER BY rr.created_at DESC LIMIT 1) AS reschedule_status
-       FROM bookings b
-       LEFT JOIN users approver ON b.approved_by = approver.id
-       WHERE b.email = ?
-       ORDER BY b.created_at DESC`,
-      [email]
-    );
+    const bookings = await fetchBookingsRows(email);
 
     const formatted = (bookings || []).map(b => ({
       ...b,

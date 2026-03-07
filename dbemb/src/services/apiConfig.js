@@ -1,7 +1,7 @@
 // Centralized API configuration for frontend services
 const isVercelHost = typeof window !== 'undefined' && /\.vercel\.app$/i.test(window.location.hostname);
 const defaultOrigin = isVercelHost
-  ? 'https://dbemb-backend.onrender.com'
+  ? 'https://dbemb-website-2.onrender.com'
   : 'http://localhost:5000';
 
 const rawBaseUrl = (
