@@ -2,7 +2,7 @@ import { API_BASE_URL } from './apiConfig';
 
 class AuthService {
   // Login user
-  async login(email, password) {
+  async login(email, password, loginType = 'any') {
     try {
       // Use cookie-based session; server sets HttpOnly cookie on successful login
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -11,7 +11,7 @@ class AuthService {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, loginType })
       });
 
       const data = await response.json();

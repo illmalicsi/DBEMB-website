@@ -1,3 +1,66 @@
+# Database Scripts Guide
+
+## Modify Database After Deployment (Aiven-safe)
+
+You can change your database schema/data anytime, even if frontend/backend are already deployed.
+
+Use tracked SQL migrations:
+
+1. Create a new SQL file in `backend/migrations/`.
+2. Name it with a sortable prefix (example: `012-add-customer-type.sql`).
+3. Run migrations from `backend`:
+
+```bash
+npm run migrate:list
+npm run migrate
+```
+
+To run one migration only:
+
+```bash
+npm run migrate:file -- 012-add-customer-type.sql
+```
+
+What this does:
+
+- Creates `schema_migrations` table (if missing)
+- Applies pending `.sql` files in order
+- Records checksum so already-applied files cannot be silently changed
+
+Tips:
+
+- Never edit old migration files after they were applied.
+- Always create a new migration for every new DB change.
+
+## Rebuild Database One-by-One (roles, users, etc.)
+
+If you want to wipe the current schema and recreate tables in order:
+
+1. Put ordered SQL files in `backend/bootstrap/`.
+2. Start with:
+  - `001_roles.sql`
+  - `002_users.sql`
+3. Add the rest as `003_*.sql`, `004_*.sql`, etc.
+
+List current bootstrap order:
+
+```bash
+npm run db:bootstrap:list
+```
+
+Run full destructive reset + bootstrap:
+
+```bash
+npm run db:reset:bootstrap
+```
+
+Important:
+
+- This drops ALL existing tables in the selected DB (`DB_NAME`) before recreating.
+- Run this only when you intentionally want a fresh start.
+- Take a backup first if data matters.
+- Keep migrations idempotent when possible (`IF EXISTS` / `IF NOT EXISTS`).
+
 # MySQL Users Export Tools
 
 This directory contains tools to export MySQL users to JSON format.

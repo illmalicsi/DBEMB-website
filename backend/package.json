@@ -6,6 +6,11 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "migrate": "node scripts/runMigrations.js",
+    "migrate:list": "node scripts/runMigrations.js --list",
+    "migrate:file": "node scripts/runMigrations.js --file",
+    "db:bootstrap:list": "node scripts/resetAndBootstrapDb.js --list",
+    "db:reset:bootstrap": "node scripts/resetAndBootstrapDb.js --confirm-reset",
     "export-users": "node scripts/exportUsersToJson.js",
     "export-all-users": "node scripts/exportAllUsersToJson.js"
   },

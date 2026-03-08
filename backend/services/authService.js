@@ -12,8 +12,27 @@ if (GOOGLE_CLIENT_ID) {
 }
 
 class AuthService {
+  normalizeLoginType(loginType) {
+    const normalized = String(loginType || '').trim().toLowerCase();
+    if (['customer', 'member', 'admin', 'any'].includes(normalized)) {
+      return normalized;
+    }
+    return 'any';
+  }
+
+  isRoleAllowedForLoginType(roleName, loginType) {
+    const role = String(roleName || '').trim().toLowerCase();
+    const type = this.normalizeLoginType(loginType);
+
+    if (type === 'any') return true;
+    if (type === 'customer') return role === 'user';
+    if (type === 'member') return role === 'member' || role === 'admin';
+    if (type === 'admin') return role === 'admin';
+    return true;
+  }
+
   // Login user
-  async login(email, password) {
+  async login(email, password, loginType = 'any') {
     try {
       // Get user with role information
       const [rows] = await pool.execute(`
@@ -31,6 +50,19 @@ class AuthService {
       }
 
       const user = rows[0];
+
+      if (!this.isRoleAllowedForLoginType(user.role_name, loginType)) {
+        if (this.normalizeLoginType(loginType) === 'customer') {
+          throw new Error('This account is not a customer account. Please use member login.');
+        }
+        if (this.normalizeLoginType(loginType) === 'member') {
+          throw new Error('This account is not a member account. Please use customer login.');
+        }
+        if (this.normalizeLoginType(loginType) === 'admin') {
+          throw new Error('This account is not an admin account.');
+        }
+        throw new Error('Account type mismatch');
+      }
 
       // Check if user is active and not blocked
       if (!user.is_active) {

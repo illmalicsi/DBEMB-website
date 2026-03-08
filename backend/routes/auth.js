@@ -46,7 +46,7 @@ const upload = multer({
 // Login route
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, loginType } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ 
@@ -54,9 +54,9 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    console.log(`Auth route: login attempt for email=${email}`);
+    console.log(`Auth route: login attempt for email=${email}, loginType=${loginType || 'any'}`);
 
-    const result = await authService.login(email, password);
+    const result = await authService.login(email, password, loginType);
 
     // Set HttpOnly cookie with JWT token
     const token = result.token;

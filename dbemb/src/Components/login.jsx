@@ -198,6 +198,7 @@ const sharedStyles = {
 
 const Login = ({ onBack, onLogin, onSwitchToSignup, onSwitchToForgotPassword, error, onClearError }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [loginType, setLoginType] = useState('customer');
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -288,7 +289,7 @@ const Login = ({ onBack, onLogin, onSwitchToSignup, onSwitchToForgotPassword, er
 
     try {
       console.log('Login component - Attempting login...');
-      const response = await authService.login(formData.email, formData.password);
+      const response = await authService.login(formData.email, formData.password, loginType);
       console.log('Login component - Response received:', response);
       
       if (response.success && onLogin) {
@@ -345,6 +346,22 @@ const Login = ({ onBack, onLogin, onSwitchToSignup, onSwitchToForgotPassword, er
           )}
 
           <form style={sharedStyles.form} onSubmit={handleSubmit} noValidate>
+            <div style={sharedStyles.field}>
+              <label style={sharedStyles.label}>Login Type</label>
+              <select
+                value={loginType}
+                onChange={(e) => setLoginType(e.target.value)}
+                style={{
+                  ...sharedStyles.input,
+                  padding: '13px 14px'
+                }}
+                aria-label="Login Type"
+              >
+                <option value="customer">Customer Login</option>
+                <option value="member">Member Login</option>
+              </select>
+            </div>
+
             <div style={sharedStyles.field}>
               <div style={sharedStyles.inputWrapper}>
                 <FaEnvelope style={sharedStyles.icon} />
